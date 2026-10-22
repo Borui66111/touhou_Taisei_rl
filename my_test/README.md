@@ -26,7 +26,7 @@ Live PPO control with `wb5_agent_demo`:
 ./.venv-winbuild/Scripts/meson.exe devenv -C ./wb5_agent_demo ./wb5_agent_demo/src/taisei.exe --renderer gl33 --rl-policy ./results/ppo_live_export.bin
 ```
 
-The PPO command uses a relative path per user instruction; it is equivalent to the user-reported absolute-path command and was not independently rerun for this documentation update. The manual command is based on the local build layout and was not independently executed here.
+From `my_test` in the moved workbench, this direct launcher exited 1 silently; stale Meson resource/toolchain paths were found. The one tested fallback reached Stage 1 then Game Over with resource warnings. The concise command above is unverified and does not establish PPO inference or performance. The manual `wb3` command above was not independently executed here.
 
 ---
 
