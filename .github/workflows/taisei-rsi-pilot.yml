@@ -31,7 +31,7 @@ jobs:
             libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev libpng-dev libssl-dev \
             libopusfile-dev libunibreak-dev libgl1-mesa-dev libegl1-mesa-dev \
             libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
-            libxfixes-dev libxss-dev libxkbcommon-dev libwayland-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxrender-dev libxkbcommon-dev libwayland-dev \
             wayland-protocols
           for p in libcglm-dev libsdl3-dev; do
             if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
