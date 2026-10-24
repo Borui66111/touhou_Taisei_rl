@@ -21,3 +21,13 @@
 **Fix:** Include `libxtst-dev` and `libxrender-dev` in the workflow's apt installation. Only the workflow dependency list was edited; no RL/policy code changed.
 
 **Validation:** Await the new Actions run for actual compiled native engine and genuine gameplay/training outputs.
+
+## 2026-10-25 — PIC-safe SDL3 shared dependency for actual native simulation
+
+**Issue:** Taisei native build run 40122420549 failed at `src/sim/meson.build`: non-PIC `SDL3_static` cannot be linked into `taisei_sim` shared library.
+
+**Reason:** The pinned `subprojects/sdl3-cmake-wrapper/meson.build` forces `SDL_SHARED=false`, `SDL_STATIC=true`; linking the imported fallback into a shared target fails Meson's PIC validation.
+
+**Fix:** On the disposable GitHub Actions runner, independently build tagged `taisei-project/SDL` as a shared library; expose pkg-config and loader paths so unchanged pinned Taisei resolves a compatible shared SDL3 dependency. Avoid rewriting upstream gameplay sources.
+
+**Validation:** Await run 40122713708; no native training success is claimed yet.
