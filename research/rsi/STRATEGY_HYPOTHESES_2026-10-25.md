@@ -52,3 +52,9 @@ E. **Model-based short-horizon risk controller**: conservative safety baseline a
 ## Next decision from evidence
 
 Until H0 passes, prioritize native build and fixed-state replay. Do not launch full training or modify the champion. After H0 passes, freeze a verified Easy curriculum and run E0 baselines and the 1,024-step pipeline pilot; if healthy, authorize controlled H1. After every run, append hypothesis, intervention, observed results (including negative), interpretation, costs and next action to ledger; do not rewrite earlier findings.
+
+## Observation: Item pickup metric can be exploited through native skills (source audit)
+
+Pinned native `src/player.c` calls `collect_all_items(1)` both in `player_bomb()` (line ~702) and `player_powersurge()` activation (line ~732). **Confirmed item pickup events by themselves cannot establish deliberate spatial navigation or collection.** A policy could increase pickups by chaining Bomb/Surge activations without learning to steer toward falling items. The native collection-ability experiment should partition collection events by mechanism (spatial overlap/manual navigation, Bomb-triggered, Power-Surge-triggered, and any other automatic attraction), trace preceding position/item trajectories, and evaluate a no-skill control. The exact causal attribution must be instrumented at the native event boundary; do not infer it merely from a simultaneous score change or item-count decrease.
+
+Source: https://github.com/touhourl/taisei-sim/blob/789200ff255c681b3ed4230a3f26f0b8c12c78fe/src/player.c
