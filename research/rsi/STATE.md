@@ -33,3 +33,9 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - GitHub Actions run 40122026719 reached SDL3 CMake but failed due missing XTEST development package (`libxtst-dev`). No smoke or PPO run completed.
 - Targeted workflow dependency fix: commit `48493153b9dc7dc5f2d6911c31b740fa9c611160` on `research/rsi-automation-v1`; subsequent run still needs native build/smoke/train verification.
 - New independent competence research branch `research/rsi-competence-v1` contains the skill-oriented design and descriptive comparison evaluator. It must not overwrite this runtime branch or reuse the sealed final seeds.
+
+## SDL3 static/PIC native build follow-up — 2026-10-25
+
+- Repaired XTEST dependency run 40122420549 proceeded past SDL3 CMake and failed when Meson refused non-PIC `SDL3_static` while linking `libtaisei_sim.so` (pinned wrapper forces static SDL).
+- Added `research/rsi/build_native_with_shared_sdl3.sh`: builds the SDL source tag named in Taisei's wrapper as an external **shared** library in the temporary CI runner, without modifying the pinned game source checkout. `run_pilot.sh` now supplies the package path and runtime loader path.
+- Run 40122713708 is the first attempt of the shared-SDL workaround. Its native smoke, training and results are **unverified** until its job actually completes.
