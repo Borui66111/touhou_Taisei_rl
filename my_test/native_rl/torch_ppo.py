@@ -6,6 +6,7 @@ TaiseiEnv and its native C backend. PPO numerical tests are not game validation.
 from __future__ import annotations
 from dataclasses import asdict
 import json
+import math
 import os
 import pathlib
 import random
@@ -15,6 +16,46 @@ from torch import nn
 from torch.distributions import Categorical
 from torch.optim import Adam
 from .env import EnvConfig, TaiseiEnv
+
+SKILL_ACTION_MASK_VERSION = 'taisei_skill_mask_v2_respawn'
+SKILL_NONE, SKILL_BOMB, SKILL_SPECIAL = 0, 1, 2
+SKILL_BOMB_STOCK_INDEX = 3
+SKILL_STORED_POWER_INDEX = 5
+SKILL_BOMB_ACTIVE_INDEX = 7
+SKILL_SURGE_ACTIVE_INDEX = 8
+SKILL_ALIVE_INDEX = 0
+SKILL_BOSS_PHASE_INDEX = 4
+SKILL_EXTRA_PHASE = 5
+SKILL_RESPAWN_TIMER_INDEX = 2
+SKILL_SPECIAL_POWER_THRESHOLD = 0.5
+
+
+def skill_action_mask(obs):
+    """Return v2 [none, bomb, special] validity from verified Reimu A state."""
+    state = obs['skill_state']
+    alive = bool(state[SKILL_ALIVE_INDEX])
+    bomb_active = bool(state[SKILL_BOMB_ACTIVE_INDEX])
+    surge_active = bool(state[SKILL_SURGE_ACTIVE_INDEX])
+    bombs_available = state[SKILL_BOMB_STOCK_INDEX] > 0
+    respawn_timer = obs['timing'][SKILL_RESPAWN_TIMER_INDEX]
+    extra_spell = int(obs['boss'][SKILL_BOSS_PHASE_INDEX]) == SKILL_EXTRA_PHASE
+    special_power = state[SKILL_STORED_POWER_INDEX] >= SKILL_SPECIAL_POWER_THRESHOLD
+    return [True,
+            bombs_available and not bomb_active and respawn_timer <= 0 and not extra_spell,
+            alive and not bomb_active and not surge_active and special_power]
+
+
+_skill_action_mask_for_obs = skill_action_mask
+
+
+def apply_skill_action_mask(skill_logits, skill_masks):
+    """Set unavailable skill logits to -inf; none-valid keeps Categorical finite."""
+    masks = torch.as_tensor(skill_masks, dtype=torch.bool, device=skill_logits.device)
+    if masks.shape != skill_logits.shape:
+        raise ValueError('Skill action mask shape must match skill logits')
+    if not torch.all(masks.any(dim=-1)):
+        raise ValueError('Every skill action mask must leave at least one action valid')
+    return skill_logits.masked_fill(~masks, -torch.inf)
 
 
 def features(obs):
@@ -58,11 +99,23 @@ class SkillActorCritic(nn.Module):
         return self.actor(z), self.skill_actor(z), self.critic(z).squeeze(-1)
 
     @staticmethod
-    def joint_logprob_entropy(move_logits, skill_logits, movement, skill):
+    def joint_logprob_entropy(move_logits, skill_logits, movement, skill,
+                              skill_masks=None):
+        joint_logp, entropy, _, _ = SkillActorCritic.joint_logprob_entropy_components(
+            move_logits, skill_logits, movement, skill, skill_masks)
+        return joint_logp, entropy
+
+    @staticmethod
+    def joint_logprob_entropy_components(move_logits, skill_logits, movement,
+                                         skill, skill_masks=None):
         move_dist=Categorical(logits=move_logits)
+        if skill_masks is not None:
+            skill_logits=apply_skill_action_mask(skill_logits, skill_masks)
         skill_dist=Categorical(logits=skill_logits)
+        movement_entropy=move_dist.entropy()
+        skill_entropy=skill_dist.entropy()
         return (move_dist.log_prob(movement)+skill_dist.log_prob(skill),
-                move_dist.entropy()+skill_dist.entropy())
+                movement_entropy+skill_entropy, movement_entropy, skill_entropy)
 
 
 def gae(rewards, values, next_values, terminated, truncated,
@@ -88,7 +141,7 @@ def _rng_state():
 
 
 def checkpoint(model, optimizer, outfile, config, updates, steps,
-               training_state=None):
+               training_state=None, skill_action_mask_version=None):
     outfile = pathlib.Path(outfile)
     outfile.parent.mkdir(parents=True, exist_ok=True)
     tmp = outfile.with_name(outfile.name + '.tmp')
@@ -104,11 +157,14 @@ def checkpoint(model, optimizer, outfile, config, updates, steps,
                 'config': asdict(config), 'updates': updates, 'steps': steps,
                 'training_state':state}
     if is_skill: payload['skills']=model.skill_actor.out_features
+    if is_skill and skill_action_mask_version is not None:
+        payload['skill_action_mask_version']=skill_action_mask_version
     torch.save(payload, tmp)
     os.replace(tmp, outfile)
 
 
-def _resume_checkpoint(path, cfg, policy_type, total_steps, resume_log):
+def _resume_checkpoint(path, cfg, policy_type, total_steps, resume_log,
+                       skill_action_mask_version=None):
     path=pathlib.Path(path)
     if not path.is_file(): raise ValueError(f'Resume checkpoint does not exist: {path}')
     try: obj=torch.load(path,map_location='cpu',weights_only=False)
@@ -117,6 +173,11 @@ def _resume_checkpoint(path, cfg, policy_type, total_steps, resume_log):
         'input_dim':8+6+cfg.max_projectiles*7+cfg.max_laser_samples*4+2+(18 if policy_type=='skill' else 0),
         'actions':18,'width':128}
     if policy_type=='skill':expected_policy['skills']=3
+    if policy_type=='skill':
+        actual_mask_version=obj.get('skill_action_mask_version')
+        if actual_mask_version != skill_action_mask_version:
+            raise ValueError('Resume checkpoint skill action mask version mismatch: '
+                             f'{actual_mask_version!r} != {skill_action_mask_version!r}')
     for key,value in expected_policy.items():
         actual=obj.get(key,'legacy' if key=='policy_type' else None)
         if actual!=value:raise ValueError(f'Resume checkpoint {key} mismatch: {actual!r} != {value!r}')
@@ -203,6 +264,8 @@ def optimize(model, optimizer, rollout, gamma=0.995, gae_lambda=0.95,
         actions=np.asarray(rollout['actions'],dtype=np.int64)
         a=torch.as_tensor(actions[:,0],dtype=torch.long,device=device)
         skill_a=torch.as_tensor(actions[:,1],dtype=torch.long,device=device)
+        skill_masks=(torch.as_tensor(rollout['skill_masks'],dtype=torch.bool,device=device)
+                     if 'skill_masks' in rollout else None)
     else:
         a = torch.as_tensor(rollout['actions'], dtype=torch.long, device=device)
     oldlog = torch.as_tensor(rollout['logprobs'], dtype=torch.float32, device=device)
@@ -218,8 +281,10 @@ def optimize(model, optimizer, rollout, gamma=0.995, gae_lambda=0.95,
             ix = indices[begin:begin+batch_size]
             if skill_policy:
                 logits,skill_logits,value=model(x[ix])
-                joint_logp,entropy_values=model.joint_logprob_entropy(
-                    logits,skill_logits,a[ix],skill_a[ix])
+                (joint_logp,entropy_values,movement_entropy_values,
+                 skill_entropy_values)=model.joint_logprob_entropy_components(
+                    logits,skill_logits,a[ix],skill_a[ix],
+                    skill_masks[ix] if skill_masks is not None else None)
                 entropy=entropy_values.mean()
             else:
                 logits, value = model(x[ix]); dist=Categorical(logits=logits)
@@ -233,16 +298,30 @@ def optimize(model, optimizer, rollout, gamma=0.995, gae_lambda=0.95,
             loss.backward()
             nn.utils.clip_grad_norm_(model.parameters(),max_grad_norm)
             optimizer.step()
-            losses.append((float(actor_loss.detach()),float(critic_loss.detach()),float(entropy.detach())))
-    return {'policy_loss':float(np.mean([v[0] for v in losses])),
-            'value_loss':float(np.mean([v[1] for v in losses])),
-            'entropy':float(np.mean([v[2] for v in losses]))}
+            if skill_policy:
+                losses.append((float(actor_loss.detach()),float(critic_loss.detach()),
+                               float(entropy.detach()),
+                               float(movement_entropy_values.mean().detach()),
+                               float(skill_entropy_values.mean().detach())))
+            else:
+                losses.append((float(actor_loss.detach()),float(critic_loss.detach()),float(entropy.detach())))
+    stats={'policy_loss':float(np.mean([v[0] for v in losses])),
+           'value_loss':float(np.mean([v[1] for v in losses])),
+           'entropy':float(np.mean([v[2] for v in losses]))}
+    if skill_policy:
+        stats['movement_entropy']=float(np.mean([v[3] for v in losses]))
+        stats['skill_entropy']=float(np.mean([v[4] for v in losses]))
+    return stats
 
 
 def train(cfg:EnvConfig, *, outfile='results/ppo_taisei_native.pt',
           total_steps=100000, rollout_steps=512, learning_rate=3e-4,
           seed=42, device='cpu', gamma=0.995, lam=0.95,
-          init=None, resume=None, resume_log=None, log_path=None, policy_type='legacy'):
+          init=None, resume=None, resume_log=None, log_path=None, policy_type='legacy',
+          skill_action_mask=False):
+    if skill_action_mask and policy_type != 'skill':
+        raise ValueError('--skill-action-mask requires --policy-type skill')
+    skill_mask_version=SKILL_ACTION_MASK_VERSION if skill_action_mask else None
     if init and resume:raise ValueError('--init and --resume are mutually exclusive')
     if resume:
         if log_path is not None:
@@ -252,7 +331,8 @@ def train(cfg:EnvConfig, *, outfile='results/ppo_taisei_native.pt',
                 raise ValueError('Resume log/checkpoint output path collision')
         if pathlib.Path(outfile).exists():raise ValueError(f'Resume output checkpoint already exists: {outfile}')
         if log_path and pathlib.Path(log_path).exists():raise ValueError(f'Resume output log already exists: {log_path}')
-        resume_obj,resume_state,steps,updates=_resume_checkpoint(resume,cfg,policy_type,total_steps,resume_log)
+        resume_obj,resume_state,steps,updates=_resume_checkpoint(
+            resume,cfg,policy_type,total_steps,resume_log,skill_mask_version)
         torch.manual_seed(seed);np.random.seed(seed);random.seed(seed)
     else:
         torch.manual_seed(seed); np.random.seed(seed); random.seed(seed)
@@ -302,10 +382,14 @@ def train(cfg:EnvConfig, *, outfile='results/ppo_taisei_native.pt',
         while steps<total_steps:
             b={key:[] for key in ('states','actions','logprobs','values',
                                   'next_values','rewards','terminated','truncated')}
+            if skill_action_mask: b['skill_masks']=[]
             for _ in range(min(rollout_steps,total_steps-steps)):
                 with torch.no_grad():
                     if policy_type=='skill':
                         logits,skill_logits,value=model(torch.as_tensor(x,dtype=torch.float32,device=device).unsqueeze(0))
+                        current_mask=_skill_action_mask_for_obs(obs) if skill_action_mask else None
+                        if current_mask is not None:
+                            skill_logits=apply_skill_action_mask(skill_logits,[current_mask])
                         move_dist=Categorical(logits=logits);skill_dist=Categorical(logits=skill_logits)
                         action=move_dist.sample();skill=skill_dist.sample()
                         log_prob=move_dist.log_prob(action)+skill_dist.log_prob(skill)
@@ -320,6 +404,7 @@ def train(cfg:EnvConfig, *, outfile='results/ppo_taisei_native.pt',
                     next_value=next_output[2] if policy_type=='skill' else next_output[1]
                 b['states'].append(x.copy());b['actions'].append(
                     [int(action.item()),int(skill.item())] if policy_type=='skill' else int(action.item()))
+                if skill_action_mask: b['skill_masks'].append(current_mask)
                 b['logprobs'].append(float(log_prob.item()))
                 b['values'].append(float(value.item()))
                 b['next_values'].append(float(next_value.item()))
@@ -345,7 +430,8 @@ def train(cfg:EnvConfig, *, outfile='results/ppo_taisei_native.pt',
                 with open(log_path,'a',encoding='utf-8') as f:f.write(json.dumps(row)+'\n')
             state={'episodes':episodes,'wins':wins,'deaths':deaths,'grazes':grazes}
             if resume and resume_state['rng_reset']:state['rng_reset']=True
-            checkpoint(model,optimizer,outfile,cfg,updates,steps,training_state=state)
+            checkpoint(model,optimizer,outfile,cfg,updates,steps,training_state=state,
+                       skill_action_mask_version=skill_mask_version)
     return outfile
 
 
@@ -356,13 +442,56 @@ def mean_alive_frames(reports):
     return sum(row['alive_frames'] for row in reports) / len(reports)
 
 
+def _nearest_projectile_trace(obs):
+    """Decode closest-approach-sorted observation rows into pixel geometry."""
+    player = obs.get('player', ())
+    if len(player) < 4:
+        return None
+    player_vx, player_vy = float(player[2]) * 20.0, float(player[3]) * 20.0
+    candidates = []
+    for bullet in obs.get('bullets', ()):
+        if len(bullet) < 7 or float(bullet[6]) != 1.0:
+            continue
+        dx, dy = float(bullet[0]) * 480.0, float(bullet[1]) * 560.0
+        vx = float(bullet[2]) * 20.0 - player_vx
+        vy = float(bullet[3]) * 20.0 - player_vy
+        speed_squared = vx * vx + vy * vy
+        time_to_closest = (min(30.0, max(0.0, -(dx * vx + dy * vy) / speed_squared))
+                           if speed_squared > 1e-9 else 0.0)
+        current_separation = math.hypot(dx, dy)
+        closest_separation = math.hypot(dx + vx * time_to_closest,
+                                        dy + vy * time_to_closest)
+        candidates.append((closest_separation, current_separation, time_to_closest,
+                           float(bullet[4]) * 30.0, float(bullet[5]) * 30.0))
+    if not candidates:
+        return None
+    closest, current, time_to_closest, width, height = min(candidates,
+                                                           key=lambda item: item[:2])
+    return {
+        'current_separation_px': current,
+        'predicted_closest_separation_px': closest,
+        'time_to_closest_frames': time_to_closest,
+        'collision_width_px': width,
+        'collision_height_px': height,
+    }
+
+
 def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
-             sampled=False, device='cpu', planner=None):
+             sampled=False, device='cpu', planner=None, trace_callback=None,
+             sampling_seed=None):
     """Evaluate episodes; frames is elapsed, alive_frames counts alive one-frame
     post-action native states (reset excluded). For action strides >1, exact
     intermediate alive frames are unavailable, so alive_frames is None.
     """
-    model=None if planner else load_policy(checkpoint_path, device)[0]
+    if sampling_seed is not None and (not sampled or planner is not None):
+        raise ValueError('sampling_seed requires sampled PPO evaluation')
+    model=None
+    policy_meta={}
+    if not planner:
+        model,policy_meta=load_policy(checkpoint_path,device)
+    if sampling_seed is not None:
+        # Model construction/loading consumes Torch RNG; reseed only after load.
+        torch.manual_seed(sampling_seed)
     policy_type='legacy' if planner else ('skill' if isinstance(model,SkillActorCritic) else 'legacy')
     feature_fn=skill_features if policy_type=='skill' else features
     reports=[]
@@ -374,8 +503,11 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
             skill_events=[];bomb_attempts=0;bomb_uses_confirmed=0
             special_attempts=0;special_activations=0
             surge_active_frames=0 if cfg.frames_per_action == 1 else None
+            action_index=0
             while True:
                 x=feature_fn(obs)
+                move_entropy=move_max_probability=move_argmax=None
+                skill_entropy=skill_max_probability=skill_argmax=None
                 if planner:
                     action=planner(obs)
                 else:
@@ -383,13 +515,64 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                         out=model(torch.as_tensor(x,dtype=torch.float32,device=device).unsqueeze(0))
                         if policy_type=='skill':
                             logits,skill_logits,_=out
+                            version=policy_meta.get('skill_action_mask_version')
+                            if version not in (None,SKILL_ACTION_MASK_VERSION):
+                                raise ValueError(f'Unsupported skill action mask version: {version}')
+                            if version==SKILL_ACTION_MASK_VERSION:
+                                skill_logits=apply_skill_action_mask(skill_logits,[_skill_action_mask_for_obs(obs)])
+                            if trace_callback is not None:
+                                move_dist=Categorical(logits=logits)
+                                skill_dist=Categorical(logits=skill_logits)
+                                move_entropy=float(move_dist.entropy().item())
+                                move_max_probability=float(move_dist.probs.max(dim=1).values.item())
+                                move_argmax=int(logits.argmax(dim=1).item())
+                                skill_entropy=float(skill_dist.entropy().item())
+                                skill_max_probability=float(skill_dist.probs.max(dim=1).values.item())
+                                skill_argmax=int(skill_logits.argmax(dim=1).item())
                             move=int(Categorical(logits=logits).sample().item()) if sampled else int(logits.argmax(dim=1).item())
                             skill=int(Categorical(logits=skill_logits).sample().item()) if sampled else int(skill_logits.argmax(dim=1).item())
                             action=(move,skill)
                         else:
                             logits,_=out
+                            if trace_callback is not None:
+                                move_dist=Categorical(logits=logits)
+                                move_entropy=float(move_dist.entropy().item())
+                                move_max_probability=float(move_dist.probs.max(dim=1).values.item())
+                                move_argmax=int(logits.argmax(dim=1).item())
                             action=int(Categorical(logits=logits).sample().item()) if sampled else int(logits.argmax(dim=1).item())
+                pre_state=None
+                if trace_callback is not None:
+                    player=obs.get('player', [])
+                    move_action=int(action[0] if isinstance(action,(tuple,list)) else action)
+                    skill_action=(int(action[1]) if policy_type=='skill' and
+                                  isinstance(action,(tuple,list)) else None)
+                    pre_state={
+                        'logical_frame':int(obs.get('logical_frame',0)),
+                        'player_x':float(player[0]) if len(player)>0 else None,
+                        'player_y':float(player[1]) if len(player)>1 else None,
+                        'alive':bool(obs.get('skill_state',[False])[0]),
+                        'deaths':int(obs.get('deaths',0)),
+                        'projectile_count':int(obs.get('projectile_count',0)),
+                        'laser_count':int(obs.get('laser_count',0)),
+                        'nearest_projectile':_nearest_projectile_trace(obs),
+                    }
                 obs,reward,term,trunc,info=env.step(action)
+                if trace_callback is not None:
+                    trace_callback({
+                        'seed':seed+e,'episode_index':e,'action_index':action_index,
+                        'pre':pre_state,'movement_action':move_action,'skill_action':skill_action,
+                        'movement_argmax':move_argmax,'movement_entropy':move_entropy,
+                        'movement_max_probability':move_max_probability,
+                        'skill_argmax':skill_argmax,'skill_entropy':skill_entropy,
+                        'skill_max_probability':skill_max_probability,
+                        'post':{
+                            'logical_frame':int(info.get('logical_frame_after',obs.get('logical_frame',0))),
+                            'alive':bool(info.get('player_alive_after',obs.get('skill_state',[False])[0])),
+                            'deaths':int(obs.get('deaths',0)),
+                            'boss_damage':float(info.get('boss_damage',0.0)),
+                        },
+                    })
+                action_index+=1
                 total_reward+=reward
                 if alive_frames is not None:
                     # Count resulting native alive-state samples: reset is excluded,

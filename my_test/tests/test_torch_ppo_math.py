@@ -1,5 +1,6 @@
 """Numerical unit tests only. These do not validate Taisei gameplay."""
 import math,sys
+import copy
 from pathlib import Path
 import unittest
 import numpy as np
@@ -21,6 +22,73 @@ class TestLearningNumerics(unittest.TestCase):
         self.assertTrue(torch.allclose(logp,md.log_prob(move)+sd.log_prob(skill)))
         self.assertTrue(torch.allclose(entropy,md.entropy()+sd.entropy()))
         self.assertEqual(values.shape,(2,))
+
+    def test_skill_entropy_metrics_match_head_distributions_and_joint_entropy(self):
+        model=SkillActorCritic(4,width=8)
+        states=np.array([[.1,.2,.3,.4],[-.3,.8,.2,-.1]],dtype=np.float32)
+        with torch.no_grad():
+            ml,sl,v=model(torch.from_numpy(states))
+            md=torch.distributions.Categorical(logits=ml)
+            sd=torch.distributions.Categorical(logits=sl)
+            moves=torch.tensor([2,4]);skills=torch.tensor([1,2])
+            logp,_=model.joint_logprob_entropy(ml,sl,moves,skills)
+        batch={'states':list(states),'actions':np.stack((moves.numpy(),skills.numpy()),axis=1).tolist(),
+               'values':v.numpy().tolist(),'logprobs':logp.numpy().tolist(),
+               'next_values':[0.,0.],'rewards':[1.,-1.],
+               'terminated':[False,True],'truncated':[False,False]}
+        stats=optimize(model,torch.optim.Adam(model.parameters(),lr=0.0),
+                       batch,epochs=1,batch_size=2)
+        self.assertAlmostEqual(stats['movement_entropy'],float(md.entropy().mean()),places=6)
+        self.assertAlmostEqual(stats['skill_entropy'],float(sd.entropy().mean()),places=6)
+        self.assertAlmostEqual(stats['entropy'],stats['movement_entropy']+stats['skill_entropy'],places=6)
+
+    def test_entropy_diagnostics_leave_legacy_objective_and_adam_update_exact(self):
+        torch.manual_seed(41);np.random.seed(41)
+        measured=SkillActorCritic(3,width=8)
+        reference=copy.deepcopy(measured)
+        states=np.array([[.2,-.1,.5],[-.7,.3,.1],[.4,.9,-.2]],dtype=np.float32)
+        with torch.no_grad():
+            ml,sl,values=measured(torch.from_numpy(states))
+            move=torch.tensor([1,3,5]);skill=torch.tensor([0,2,1])
+            md=torch.distributions.Categorical(logits=ml)
+            sd=torch.distributions.Categorical(logits=sl)
+            oldlog=(md.log_prob(move)+sd.log_prob(skill)).numpy()
+        batch={'states':list(states),'actions':np.stack((move.numpy(),skill.numpy()),axis=1).tolist(),
+               'values':values.numpy().tolist(),'logprobs':oldlog.tolist(),
+               'next_values':[.1,-.2,.3],'rewards':[1.,-.5,.7],
+               'terminated':[False,False,True],'truncated':[False]*3}
+        measured_opt=torch.optim.Adam(measured.parameters(),lr=1e-3)
+        reference_opt=torch.optim.Adam(reference.parameters(),lr=1e-3)
+        np.random.seed(42)
+        indices=np.arange(3);np.random.shuffle(indices)
+        np.random.seed(42)
+        stats=optimize(measured,measured_opt,batch,epochs=1,batch_size=3)
+
+        advantages,returns=gae(batch['rewards'],batch['values'],batch['next_values'],
+                               batch['terminated'],batch['truncated'])
+        adv=torch.as_tensor(advantages[indices],dtype=torch.float32)
+        adv=(adv-adv.mean())/(adv.std(unbiased=False)+1e-8)
+        ml_ref,sl_ref,v_ref=reference(torch.from_numpy(states[indices]))
+        move_ref=move[torch.as_tensor(indices)]
+        skill_ref=skill[torch.as_tensor(indices)]
+        md_ref=torch.distributions.Categorical(logits=ml_ref)
+        sd_ref=torch.distributions.Categorical(logits=sl_ref)
+        joint_logp=md_ref.log_prob(move_ref)+sd_ref.log_prob(skill_ref)
+        joint_entropy=md_ref.entropy()+sd_ref.entropy()
+        ratio=torch.exp(joint_logp-torch.as_tensor(oldlog[indices],dtype=torch.float32))
+        surrogate=torch.minimum(ratio*adv,ratio.clamp(.8,1.2)*adv)
+        actor_loss=-surrogate.mean()
+        critic_loss=((v_ref-torch.as_tensor(returns[indices],dtype=torch.float32))**2).mean()
+        loss=actor_loss+.5*critic_loss-.01*joint_entropy.mean()
+        reference_opt.zero_grad(set_to_none=True);loss.backward()
+        torch.nn.utils.clip_grad_norm_(reference.parameters(),.5)
+        reference_opt.step()
+
+        self.assertEqual(stats['policy_loss'],float(actor_loss.detach()))
+        self.assertEqual(stats['value_loss'],float(critic_loss.detach()))
+        self.assertEqual(stats['entropy'],float(joint_entropy.mean().detach()))
+        for actual,expected in zip(measured.parameters(),reference.parameters()):
+            self.assertTrue(torch.equal(actual,expected))
 
     def test_skill_features_are_extended_and_exclude_telemetry(self):
         obs={'player':[0.0]*8,'boss':[0.0]*6,'bullets':[],'lasers':[],
