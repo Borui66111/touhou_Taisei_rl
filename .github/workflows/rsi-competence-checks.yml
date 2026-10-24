@@ -1,0 +1,51 @@
+name: Taisei RSI competence evidence checks
+
+on:
+  push:
+    branches: [research/rsi-competence-v1]
+    paths:
+      - "research/rsi/**"
+      - ".github/workflows/rsi-competence-checks.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  score-competence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests for accuracy, invalid data, sealed seed protection
+        run: python -m unittest discover -s research/rsi -p test_competence_eval.py -v
+      - name: Descriptive paired evaluation (not causal; no promotion)
+        run: |
+          python research/rsi/competence_eval.py \
+            --baseline my_test/results/ppo_skill_survival1_unmasked_infermaskv2_seed42000_n16_20261023.jsonl \
+            --candidate my_test/results/ppo_skill_survival1_maskv2_candidate_seed42000_n16_20261023.jsonl \
+            --out research_evidence/competence_20261025_pair16.json
+      - name: Print measured evidence and guardrails
+        run: |
+          python - <<'PY'
+          import json
+          p='research_evidence/competence_20261025_pair16.json'
+          r=json.load(open(p))
+          assert len(r["seeds"]) == 16
+          assert r["candidate"]["clears"] == 0
+          assert r["baseline"]["clears"] == 0
+          assert r["promotion_allowed"] is False
+          assert r["comparability"] == "DESCRIPTIVE_ONLY"
+          assert r["candidate"]["confirmed_item_pickups"] is None
+          print(json.dumps(r, indent=2))
+          PY
+      - name: Upload evidence artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taisei-competence-descriptive
+          path: research_evidence/*.json
+          if-no-files-found: ignore
