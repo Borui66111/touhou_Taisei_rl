@@ -9,6 +9,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import sys
 
 CONTROL = {
     "survival_weight": 1.0, "damage_weight": 0.02, "graze_weight": 0.001,
@@ -61,6 +62,7 @@ def main(argv=None):
     print(json.dumps(settings, indent=2), flush=True)
     if args.preflight_only:
         return
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'my_test'))
     from native_rl.env import EnvConfig
     from native_rl.torch_ppo import train
     cfg = EnvConfig(library_path=args.library, resource_path=args.resource_path,
