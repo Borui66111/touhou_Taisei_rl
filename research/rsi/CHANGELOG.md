@@ -11,3 +11,13 @@
 **Validation required:** Build and native gameplay must complete in GitHub Actions. The training/evaluation stage has not yet been confirmed successful. No champion promotion or final-seed testing permitted.
 
 **Known research issues:** Survival reward scale, Power Surge discharge mask behavior, and deployment parity need independent resolution before full RSI experiments.
+
+## 2026-10-25 — SDL3 XTEST dependency repair
+
+**Issue:** The full native pilot run 40122026719 stopped at SDL3 CMake: dependency package for XTEST was not found.
+
+**Reason:** The Ubuntu GitHub runner had X11 headers but not the XTest development package; native library was not built and no RL experiment ran.
+
+**Fix:** Include `libxtst-dev` and `libxrender-dev` in the workflow's apt installation. Only the workflow dependency list was edited; no RL/policy code changed.
+
+**Validation:** Await the new Actions run for actual compiled native engine and genuine gameplay/training outputs.
