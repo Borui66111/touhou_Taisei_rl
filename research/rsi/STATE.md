@@ -27,3 +27,9 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 ## Current state
 - Prior native smoke failed at SDL3 configuration because X11/Wayland development headers were missing. The research pilot now installs those development packages, but **successful build and training remain unverified until Actions completes**.
 - The current agent-side container cannot directly compile the engine; the GitHub runner is the execution backend.
+
+## Build troubleshooting 2026-10-25
+
+- GitHub Actions run 40122026719 reached SDL3 CMake but failed due missing XTEST development package (`libxtst-dev`). No smoke or PPO run completed.
+- Targeted workflow dependency fix: commit `48493153b9dc7dc5f2d6911c31b740fa9c611160` on `research/rsi-automation-v1`; subsequent run still needs native build/smoke/train verification.
+- New independent competence research branch `research/rsi-competence-v1` contains the skill-oriented design and descriptive comparison evaluator. It must not overwrite this runtime branch or reuse the sealed final seeds.
