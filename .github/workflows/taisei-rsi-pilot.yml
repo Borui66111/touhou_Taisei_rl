@@ -2,7 +2,7 @@ name: Taisei RSI pilot (native, fail closed)
 
 on:
   push:
-    branches: [research/rsi-automation-v1]
+    branches: [research/rsi-easy-curriculum-fix]
     paths:
       - ".github/workflows/taisei-rsi-pilot.yml"
       - "research/rsi/**"
@@ -12,13 +12,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: taisei-rsi-pilot
+  group: taisei-rsi-easy-pilot
   cancel-in-progress: false
 
 jobs:
   native-pilot:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -39,7 +39,8 @@ jobs:
             if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
           done
           python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'pytest>=8' \
-            torch --index-url https://pypi.org/simple
+            'backports.zstd' torch --index-url https://pypi.org/simple
+          python -c 'from backports.zstd import ZstdCompressor, ZstdDecompressor; print("pack.py zstd imports OK")'
       - name: Build, smoke, train and compare (development seeds only)
         working-directory: my_test
         run: |
