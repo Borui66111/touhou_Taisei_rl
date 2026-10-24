@@ -31,3 +31,13 @@
 **Fix:** Added `train_reward_ablation.py` with an unmodified control arm and a survival/clear-weight challenger arm; all other PPO/game choices are fixed. Added four tests, CLI preflight, immutable output safeguards and expanded CI. No fake native dynamics or automatic champion promotion.
 
 **Verification:** Source-only GitHub Actions evaluator succeeded for the prior nine-test revision. The full 13-test revision and real native E1 training require separate verification.
+
+## 2026-10-25 — Experiment trajectory and self-improving research governance
+
+**Issue:** Sequential RL training changes were not connected by an immutable, provenance-aware scientific process history; early failures and pivots were difficult to reconstruct and a CI fix could be mistaken for gameplay learning.
+
+**Reason:** Training-only recursion and unstructured logs do not capture hypotheses, experiment choices, failure mechanisms, decisions, or why higher-level strategy changed.
+
+**Fix:** Added `RESEARCH_OS.md` with L0-L4 recursion, bounded default-continuation, marginal-gain evaluation and human gates. Seeded and corrected 11 evidence-labeled trajectory events, appended retroactive context without treating it as reexecuted data; implemented stdlib ledger validator, 10 regression tests, immutable byte-prefix CI, and machine-readable research digest. Enabled daily safe continuation separately from an existing hourly status watcher. Persisted a compact cross-project synthesis to the UKS.
+
+**Verification:** CI run 40126793965 passed the initial 9-event/10-test trajectory audit. Newly appended 2 events and this changelog update must be checked by follow-up CI; native training still unverified due to SDL3 build failure.
