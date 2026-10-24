@@ -13,7 +13,10 @@ mkdir -p "$OUT"
 } > "$OUT/manifest.txt"
 
 # A real engine is mandatory. Any failure stops the pipeline.
-bash scripts/build_taisei_sim.sh 2>&1 | tee "$OUT/native_build.log"
+export TAISEI_CI_SDL_PREFIX="${RUNNER_TEMP:-/tmp}/taisei-sdl3-prefix"
+export PKG_CONFIG_PATH="$TAISEI_CI_SDL_PREFIX/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+export LD_LIBRARY_PATH="$TAISEI_CI_SDL_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+bash ../research/rsi/build_native_with_shared_sdl3.sh 2>&1 | tee "$OUT/native_build.log"
 ROOT="$PWD/upstream/taisei-sim-pinned"
 LIB="$(find "$ROOT/build" -type f -name 'libtaisei_sim.so*' | head -n1)"
 test -n "$LIB" || { echo "BLOCKED: native simulator library missing" >&2; exit 1; }
