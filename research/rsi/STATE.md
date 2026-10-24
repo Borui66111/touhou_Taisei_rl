@@ -36,3 +36,9 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - Benchmark uses existing native JSONL records (42000–42015); invalid/incomplete provenance forbids promotion, sealed final seeds rejected.
 - **Blocked:** new native training and validated collection events still need actual compiled simulator + native instrumentation. Original repair pipeline run 40122026719 failed during SDL3 configuration because XTEST dev package absent; a targeted fix is applied on `research/rsi-automation-v1`.
 - Next: validate evaluator on GitHub Actions, resolve native build, run baseline E0 and first reward-only E1 challenger on matched real-game seeds.
+
+### E1 reward-only challenger prepared
+
+- `train_reward_ablation.py` defines current reward (`control`) vs calibrated survival/clear reward (`challenger`) with the *same* architecture, mask, PPO settings and native game config. It refuses existing checkpoint/log paths. The launcher is **not yet executed on native Taisei**; `--preflight-only` validates configuration without inventing gameplay.
+- `test_reward_ablation.py` adds four regression tests. `rsi-competence-checks.yml` runs all 13 unit tests plus a descriptive comparison of published 16-seed native evaluations.
+- Native build follow-up after adding `libxtst-dev` is still being verified on the separate automation branch. Do not launch resource-heavy E1 training or claim results before it passes.
