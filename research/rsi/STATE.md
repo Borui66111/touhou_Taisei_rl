@@ -27,3 +27,12 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 ## Current state
 - Prior native smoke failed at SDL3 configuration because X11/Wayland development headers were missing. The research pilot now installs those development packages, but **successful build and training remain unverified until Actions completes**.
 - The current agent-side container cannot directly compile the engine; the GitHub runner is the execution backend.
+
+## 2026-10-25 — Competence-first RSI design
+
+- Independent research branch: `research/rsi-competence-v1`.
+- Full ability specification: `research/rsi/COMPETENCE_SPEC.md`; requires actual dodging, successful survival, confirmed native collection, and strict promotion gates.
+- Executable descriptive evaluator: `research/rsi/competence_eval.py` + nine unit tests in `research/rsi/test_competence_eval.py`.
+- Benchmark uses existing native JSONL records (42000–42015); invalid/incomplete provenance forbids promotion, sealed final seeds rejected.
+- **Blocked:** new native training and validated collection events still need actual compiled simulator + native instrumentation. Original repair pipeline run 40122026719 failed during SDL3 configuration because XTEST dev package absent; a targeted fix is applied on `research/rsi-automation-v1`.
+- Next: validate evaluator on GitHub Actions, resolve native build, run baseline E0 and first reward-only E1 challenger on matched real-game seeds.
