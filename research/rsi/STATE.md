@@ -42,3 +42,12 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - `train_reward_ablation.py` defines current reward (`control`) vs calibrated survival/clear reward (`challenger`) with the *same* architecture, mask, PPO settings and native game config. It refuses existing checkpoint/log paths. The launcher is **not yet executed on native Taisei**; `--preflight-only` validates configuration without inventing gameplay.
 - `test_reward_ablation.py` adds four regression tests. `rsi-competence-checks.yml` runs all 13 unit tests plus a descriptive comparison of published 16-seed native evaluations.
 - Native build follow-up after adding `libxtst-dev` is still being verified on the separate automation branch. Do not launch resource-heavy E1 training or claim results before it passes.
+
+## 2026-10-25 — Meta-controller and experiment memory
+
+- Research-method specification: `research/rsi/RESEARCH_OS.md` (L0 policy through L4 RSI-governance recursion; marginal return and human-review rules).
+- Evidence ledger: `research/rsi/trajectory/events.jsonl`, currently 11 linked events including retrospective toy-to-native pivot and daily continuation setup; source refs and limitations are explicit. Latest event IDs `T-20261025-04` and `T-20261025-05` are retrospective/operational, not evidence of native gameplay learning.
+- Validator: `research/rsi/trajectory/ledger.py` plus `test_ledger.py`; CI `.github/workflows/rsi-meta-audit.yml` checks byte-prefix history and validates linked events. Initial run 40126793965 passed all 10 tests; appended events require follow-up CI confirmation.
+- Daily safe RSI research continuation enabled; hourly status watcher remains separate. Future execution/actual contribution is unverified until the first scheduled run.
+- Current bottleneck: latest native workflow run 40122731438 failed in SDL3 configuration before smoke/training. Continue targeted native build investigation before another training experiment; no sealed final seeds and no champion promotion.
+- UKS persistent synthesis: `/Knowledge/05_Methods/RSI_Multi_Level_Research_Operating_System_and_Trajectory_2026-10-25.md` with live Git evidence pointers.
