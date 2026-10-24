@@ -1,0 +1,62 @@
+name: RSI trajectory integrity and research digest
+
+on:
+  push:
+    branches: [research/rsi-meta-controller-v1]
+    paths:
+      - "research/rsi/trajectory/**"
+      - "research/rsi/RESEARCH_OS.md"
+      - ".github/workflows/rsi-meta-audit.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taisei-rsi-meta-audit
+  cancel-in-progress: false
+
+jobs:
+  inspect-trajectory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Prove prior committed trajectory remains a byte prefix
+        run: |
+          python - <<'PY'
+          import pathlib, subprocess
+          p = "research/rsi/trajectory/events.jsonl"
+          current = pathlib.Path(p).read_bytes()
+          prior = subprocess.run(["git", "show", "HEAD^:" + p], text=False, capture_output=True)
+          if prior.returncode != 0:
+              print("No trajectory at immediate parent commit: new ledger / ancestor or previous file absent")
+          else:
+              if not current.startswith(prior.stdout):
+                  raise SystemExit("ERROR: existing research trajectory edited or truncated; append a corrective event instead")
+              print(f"Append-only byte-prefix verified: {len(prior.stdout)} prior bytes retained")
+          PY
+      - name: Run ledger tests
+        run: python -m unittest discover -s research/rsi/trajectory -p 'test_*.py' -v
+      - name: Validate linked historical events
+        run: |
+          python research/rsi/trajectory/ledger.py validate \
+            --ledger research/rsi/trajectory/events.jsonl
+      - name: Produce inspectable research digest
+        run: |
+          python research/rsi/trajectory/ledger.py summarize \
+            --ledger research/rsi/trajectory/events.jsonl \
+            --out research_evidence/rsi_trajectory_summary.json
+      - name: Preserve audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi-trajectory-digest
+          path: research_evidence/rsi_trajectory_summary.json
+          if-no-files-found: ignore
+          retention-days: 30
