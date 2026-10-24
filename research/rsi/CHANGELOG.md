@@ -21,3 +21,13 @@
 **Fix:** Add `COMPETENCE_SPEC.md`, `competence_eval.py`, and nine automated regression tests. Formalize capability milestones, a safe research ladder, development/final seed separation, exact telemetry requirements and fail-closed comparison rules. This is scientific infrastructure, not evidence of successful training.
 
 **Verification pending:** GitHub Actions evaluator tests; native simulator build and real training on the remote runner.
+
+## 2026-10-25 — First native-only challenger launcher
+
+**Issue:** Research goals were described but not executable as a controlled PPO challenger.
+
+**Reason:** No isolated training arm and no output/provenance guard existed for a reward-only comparison.
+
+**Fix:** Added `train_reward_ablation.py` with an unmodified control arm and a survival/clear-weight challenger arm; all other PPO/game choices are fixed. Added four tests, CLI preflight, immutable output safeguards and expanded CI. No fake native dynamics or automatic champion promotion.
+
+**Verification:** Source-only GitHub Actions evaluator succeeded for the prior nine-test revision. The full 13-test revision and real native E1 training require separate verification.
