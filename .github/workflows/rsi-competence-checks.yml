@@ -21,7 +21,7 @@ jobs:
         with:
           python-version: "3.11"
       - name: Unit tests for accuracy, invalid data, sealed seed protection
-        run: python -m unittest discover -s research/rsi -p test_competence_eval.py -v
+        run: python -m unittest discover -s research/rsi -p 'test_*.py' -v
       - name: Descriptive paired evaluation (not causal; no promotion)
         run: |
           python research/rsi/competence_eval.py \
