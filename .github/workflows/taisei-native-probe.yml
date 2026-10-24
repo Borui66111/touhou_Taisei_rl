@@ -1,0 +1,68 @@
+name: Taisei native simulator smoke (experimental)
+
+on:
+  push:
+    branches:
+      - research/native-runner-probe
+    paths:
+      - ".github/workflows/taisei-native-probe.yml"
+      - "my_test/scripts/build_taisei_sim.sh"
+      - "my_test/scripts/smoke_native.py"
+      - "my_test/UPSTREAM.lock"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  native-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config \
+            gettext libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev \
+            libpng-dev libssl-dev libopusfile-dev libunibreak-dev \
+            libgl1-mesa-dev libegl1-mesa-dev
+          if apt-cache show libcglm-dev >/dev/null 2>&1; then sudo apt-get install -y libcglm-dev; fi
+          if apt-cache show libsdl3-dev >/dev/null 2>&1; then sudo apt-get install -y libsdl3-dev; fi
+          python -m pip install "meson>=1.8" ninja numpy "pytest>=8"
+      - name: Report pinned source and environment
+        working-directory: my_test
+        run: |
+          uname -a
+          python --version
+          meson --version
+          cat UPSTREAM.lock
+          git status --short
+      - name: Compile actual pinned Taisei native simulator
+        working-directory: my_test
+        run: |
+          bash scripts/build_taisei_sim.sh
+      - name: Run real-game headless smoke test (no toy fallback)
+        working-directory: my_test
+        run: |
+          ROOT="$PWD/upstream/taisei-sim-pinned"
+          LIB="$(find "$ROOT/build" -name 'libtaisei_sim.so*' -type f | head -n 1)"
+          test -n "$LIB" || { echo "ERROR: native library absent"; exit 1; }
+          meson devenv -C "$ROOT/build" -- \
+            python scripts/smoke_native.py \
+              --library "$LIB" \
+              --resource-path "$ROOT/resources" \
+              --stage 1 --difficulty 2 --seed 42000 --frames 300 \
+            | tee native-smoke-stdout.txt
+      - name: Upload trace for review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-smoke-trace
+          path: my_test/native-smoke-stdout.txt
+          if-no-files-found: ignore
