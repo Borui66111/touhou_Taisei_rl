@@ -1,0 +1,71 @@
+{
+  "schema_version": "taisei_rsi_skill_aware_reward_e1",
+  "run_id": 40187753883,
+  "run_url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40187753883",
+  "code_sha": "1ab581f5ccff3f793fbe886d63b64c7e942af0a0",
+  "native_sim_commit": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+  "artifact_id": 12596786188,
+  "artifact_expires_at": "2026-11-24T11:14:40Z",
+  "status": "native_training_evaluation_completed_not_promoted",
+  "task": {
+    "stage_id": 1,
+    "difficulty_id": 1,
+    "practice": false,
+    "eval_seeds": [
+      42110,
+      42111,
+      42112,
+      42113,
+      42114,
+      42115,
+      42116,
+      42117,
+      42118,
+      42119,
+      42120,
+      42121,
+      42122,
+      42123,
+      42124,
+      42125
+    ],
+    "train_seed": 48020,
+    "train_steps_each": 20000,
+    "policy": "skill-aware PPO with original mask v2",
+    "sealed_final_seeds": "43000-43099 unused"
+  },
+  "results": {
+    "control": {
+      "checkpoint_sha256": "5cf7eb84b6a8c56825c25527162691179c057850963e38178d4dbe3fe51d995f",
+      "n": 16,
+      "clears": 0,
+      "mean_deaths": 3,
+      "mean_alive_frames": 3454,
+      "mean_bombs": 9,
+      "mean_boss_damage": 3087.5
+    },
+    "survival_first": {
+      "checkpoint_sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+      "n": 16,
+      "clears": 0,
+      "mean_deaths": 3,
+      "mean_alive_frames": 4477,
+      "mean_bombs": 8.9375,
+      "mean_boss_damage": 24000
+    },
+    "paired_alive_delta_candidate_minus_control": 1023,
+    "bootstrap_95pct_ci_across_eval_seeds_only": [
+      868.8125,
+      1151.9375
+    ]
+  },
+  "interpretation": "The reward formulation interacts with skill availability: in skill-aware PPO the candidate accumulates longer native alive time and more boss damage with similarly heavy Bomb spending (almost nine per run), while the separately trained movement-only arm got worse under the same reward bundle. This is not evidence of better innate dodging or stage clearing. The arms differ in action capacity, and only a single training seed was used; do not compare cross-experiment estimates causally.",
+  "limitations": [
+    "All 32 eval episodes lose three lives; no clears.",
+    "Original skill-action mask v2 blocks Surge early discharge.",
+    "One training seed and 16 evaluation seeds, intervals exclude training variance.",
+    "Several reward coefficients changed together; no individual identification.",
+    "Native confirmed manual item pickup and first death telemetry missing."
+  ],
+  "decision": "No champion promotion; prioritize native behavioral traces and risk-conditioned movement competence before bigger training."
+}
