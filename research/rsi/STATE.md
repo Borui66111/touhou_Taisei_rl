@@ -39,3 +39,12 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - Repaired XTEST dependency run 40122420549 proceeded past SDL3 CMake and failed when Meson refused non-PIC `SDL3_static` while linking `libtaisei_sim.so` (pinned wrapper forces static SDL).
 - Added `research/rsi/build_native_with_shared_sdl3.sh`: builds the SDL source tag named in Taisei's wrapper as an external **shared** library in the temporary CI runner, without modifying the pinned game source checkout. `run_pilot.sh` now supplies the package path and runtime loader path.
 - Run 40122713708 is the first attempt of the shared-SDL workaround. Its native smoke, training and results are **unverified** until its job actually completes.
+
+## 2026-10-25 — E1 preregistered: learning defensive movement without skills
+
+- **Trigger:** real Taisei 1024-step skill PPO pilot run 40185526694 survived mean 3455 frames with 9 Bombs per episode; paired same-checkpoint native skill-off run 40186512931 survived only 792.25 frames, versus 1630.75 for the heuristic. All policy variants cleared 0/4 and lost 3 lives. The v2 checkpoint is resource-dependent; evidence does not establish competent dodging.
+- **E1 question:** does a survival/clear-oriented reward formulation improve PPO **movement-only** survival when native Bomb/Surge actions are unavailable?
+- **Two arms, only reward differs:** original control vs survival_first (alive +0.002, death -30, loss -30, clear +100, graze 0, boss damage 0.001). Same native Easy Stage 1, 18-action movement-only ActorCritic, learning rate 3e-4, gamma .995, rollout 512, training seed 48020, exactly 20k native game interactions each.
+- **Evaluation:** 16 identical development seeds 42100-42115 for each policy, plus no-skill geometric heuristic. Native deterministic replay check, same game build, exact episode statistics, paired bootstrap interval over evaluation seeds (does not cover multi-training-seed uncertainty). Sealed final seeds 43000-43099 remain untouched.
+- **Status:** experiment source and executable pipeline prepared on `research/rsi-movement-reward-e1`; no training evidence exists until new GitHub Actions run passes. No champion promotion authorized.
+- **Next:** review native build, replay determinism, each training checkpoint and manifest, actual deaths/first-hit/clear, paired baseline outcomes. If the calibrated reward fails to improve movement, prioritize threat representation and teacher-guided curriculum rather than repeated reward-only tuning.
