@@ -51,3 +51,11 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - Daily safe RSI research continuation enabled; hourly status watcher remains separate. Future execution/actual contribution is unverified until the first scheduled run.
 - Current bottleneck: latest native workflow run 40122731438 failed in SDL3 configuration before smoke/training. Continue targeted native build investigation before another training experiment; no sealed final seeds and no champion promotion.
 - UKS persistent synthesis: `/Knowledge/05_Methods/RSI_Multi_Level_Research_Operating_System_and_Trajectory_2026-10-25.md` with live Git evidence pointers.
+
+## 2026-10-25 — Follow-up: real native build and post-build runtime
+
+- Native Easy pilot run 40128137506 **successfully completed all 618/618 build tasks**, including `src/sim/libtaisei_sim.so` and game resource packages. It then failed because `meson devenv -C ... -- python` was interpreted as trying to execute `--`; no real gameplay/training occurred.
+- Next run 40185187240 removed `--`; it again compiled but `meson devenv` changed the working directory to `build/`, so relative `scripts/smoke_native.py` could not be found; still no native gameplay.
+- Isolated branch `research/rsi-easy-curriculum-fix` now uses absolute workbench script paths, with preflight assertion to catch regression. Native pilot run 40185526694 is the latest run to verify. Do not treat compile success as proven ABI or gameplay.
+- Separate agent-strategy branch `research/rsi-surge-mask-v3` corrects Power Surge early-discharge eligibility without reinterpreting historical v2 checkpoints. GitHub Actions run 40185726369 passed 11 unit tests. This is a code correctness result, not native gameplay success.
+- Current research gates: actual reset/step smoke; deterministic replay check; 1,024-step training and checkpoint hash; same Easy difficulty 1/development seeds; E0 baselines then E1 reward-only challenger. Sealed 43000–43099 untouched.
