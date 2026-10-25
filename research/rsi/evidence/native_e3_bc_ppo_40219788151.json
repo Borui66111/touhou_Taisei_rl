@@ -1,0 +1,72 @@
+{
+  "schema_version": "taisei_rsi_e3_native_imitation_20261026",
+  "experiment_id": "E3_NATIVE_TEACHER_DISTILL_V1_RECOVERY_01",
+  "run_id": 40219788151,
+  "url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40219788151",
+  "commit_sha": "880d43197301c97c2675a57370c1a9ae1728e569",
+  "artifact_id": 12609092648,
+  "artifact_name": "taisei-e3-distillation-40219788151",
+  "run_succeeded": true,
+  "environment": "authentic pinned Taisei 1 Easy full Stage, 18 movement only, no Bomb/Special action",
+  "build_smoke_determinism_verified": true,
+  "training": {
+    "teacher_decisions": 12000,
+    "ppo_decisions": 8000,
+    "total_native_training_interactions": 20000,
+    "teacher_seed": 48030,
+    "ppo_seed": 48020,
+    "training_dataset_sha256": "02dd11feb60e0dcb5710ae8af3cf33dca7e7e77756d6467f822ad94d0f5a0d8d",
+    "teacher_completed_episodes": 1,
+    "bc_epochs": 16,
+    "bc_holdout_frame_accuracy": 0.8391666412353516,
+    "holdout_data_split": "random frame holdout, temporally correlated",
+    "model_sha256": {
+      "bc": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54",
+      "bc_ppo": "dd110638e81e2479e13591ad1a5cfb0ab28e535d7b889e25cdefd287f55b17d9"
+    }
+  },
+  "native_evaluation": {
+    "paired_development_seed_range": [
+      42100,
+      42115
+    ],
+    "n_each": 16,
+    "bc_only": {
+      "mean_alive_frames": 1346.5,
+      "mean_deaths": 3,
+      "clears": 0,
+      "mean_bombs_used": 0,
+      "mean_boss_damage": 0
+    },
+    "bc_ppo": {
+      "mean_alive_frames": 1047.5625,
+      "mean_deaths": 3,
+      "clears": 0,
+      "mean_bombs_used": 0,
+      "mean_boss_damage": 0
+    },
+    "paired_ppo_minus_bc_alive": -298.9375,
+    "paired_eval_seed_bootstrap95": [
+      -401.8125,
+      -234.375
+    ]
+  },
+  "offline_rare_action_audit": {
+    "artifact_source": "same E3 archive",
+    "eval_split": "original 1200 random-frame validation indices",
+    "always_stay_accuracy": 0.6916666666666667,
+    "bc_accuracy": 0.8391666666666666,
+    "bc_stay_recall": 0.944578313253012,
+    "bc_nonstay_accuracy": 0.6027027027027027,
+    "bc_macro_recall_14_supported_classes": 0.40561504547083455,
+    "demonstrated_action_stay_fraction": 0.6934166666666667,
+    "limits": "Frame-level validation correlated within one/few teacher trajectories; does not measure real-game survival"
+  },
+  "decision": "No policy promotion. Test fixed class-frequency-aware behavior cloning on archived native dataset, evaluate learned model against original BC on paired real-game seeds; do not allocate more PPO yet.",
+  "limitations": [
+    "Single teacher demonstration trajectory covers ~1 full terminal episode plus one partial episode",
+    "Fixed single training seed, 16 development evaluation seeds, no unseen spells",
+    "BC random-frame holdout overstates independent generalization",
+    "Teacher E2 reference 7598 alive frames comes from separate but same-seed/source experiments; contextual not within-run teacher arm"
+  ]
+}
