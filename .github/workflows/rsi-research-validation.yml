@@ -9,6 +9,11 @@ on:
       - "research/rsi/test_competence_eval.py"
       - "research/rsi/train_reward_ablation.py"
       - "research/rsi/test_reward_ablation.py"
+      - "research/rsi/risk_aware_teacher.py"
+      - "research/rsi/test_risk_aware_teacher.py"
+      - "research/rsi/e2_evaluate_teacher.py"
+      - "research/rsi/e2_compare_teacher.py"
+      - "research/rsi/test_e2_teacher_compare.py"
       - "research/rsi/policy_format_preflight.py"
       - "research/rsi/test_policy_format_preflight.py"
       - ".github/workflows/rsi-research-validation.yml"
@@ -44,6 +49,8 @@ jobs:
           python -m unittest discover -s research/rsi -p 'test_policy_format_preflight.py' -v
           python -m unittest discover -s research/rsi -p 'test_competence_eval.py' -v
           python -m unittest discover -s research/rsi -p 'test_reward_ablation.py' -v
+          python -m unittest discover -s research/rsi -p 'test_risk_aware_teacher.py' -v
+          python -m unittest discover -s research/rsi -p 'test_e2_teacher_compare.py' -v
       - name: Generate research timeline digest
         run: |
           python research/rsi/trajectory/ledger.py summarize \
