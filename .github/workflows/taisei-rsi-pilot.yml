@@ -36,8 +36,10 @@ jobs:
           for p in libcglm-dev libsdl3-dev; do
             if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
           done
-          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'pytest>=8' \
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'pytest>=8' zstandard \
             torch --index-url https://pypi.org/simple
+      - name: Validate movement diagnostic source tests
+        run: python -m unittest discover -s research/rsi -p test_e2_trace.py -v
       - name: Build, smoke, train and compare (development seeds only)
         working-directory: my_test
         run: |
