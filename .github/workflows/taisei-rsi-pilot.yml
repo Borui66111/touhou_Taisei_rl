@@ -4,9 +4,7 @@ on:
   push:
     branches: [research/rsi-automation-v1]
     paths:
-      - ".github/workflows/taisei-rsi-pilot.yml"
-      - "research/rsi/**"
-      - "my_test/native_rl/**"
+      - "research/rsi/PILOT_RUN_REQUEST.md"
   workflow_dispatch: {}
 
 permissions:
@@ -37,8 +35,10 @@ jobs:
           for p in libcglm-dev libsdl3-dev; do
             if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
           done
-          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'pytest>=8' zstandard \
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'pytest>=8' 'backports.zstd' \
             torch --index-url https://pypi.org/simple
+      - name: Verify Taisei native resource packer Python package
+        run: python -c 'from backports.zstd import ZstdCompressor, ZstdDecompressor; print("backports.zstd ready")'
       - name: Validate movement diagnostic source tests
         run: python -m unittest discover -s research/rsi -p test_e2_trace.py -v
       - name: Build, smoke, train and compare (development seeds only)
