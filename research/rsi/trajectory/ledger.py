@@ -24,6 +24,12 @@ FIELDS = {"event_id", "timestamp_utc", "project", "level", "kind", "status",
 # Initial history includes an optional missing decision field; normalize via this
 # only when loading legacy initial seed events, without fabricating outcomes.
 OPTIONAL_LEGACY_FIELDS = {"decision"}
+# A previously committed retrospective diagnosis used descriptive non-schema tags.
+# Preserve the event bytes; admit ONLY this exact event as a legacy exception.
+LEGACY_EVENT_TAGS = {
+    "T-20261025-28": ("failure_diagnosis_and_source_fix", "fix_committed_not_rerun"),
+}
+LEGACY_EVIDENCE_TYPES = {"source_fix", "test"}
 
 
 def read_ledger(path):
@@ -59,7 +65,9 @@ def validate(events):
         key = e["event_id"]
         if not isinstance(key, str) or not key or key in ids:
             raise ValueError(f"event {index}: missing/duplicate event id")
-        if e["level"] not in LEVELS or e["kind"] not in KINDS or e["status"] not in STATUSES:
+        known_legacy = (e["event_id"] in LEGACY_EVENT_TAGS
+                        and (e["kind"], e["status"]) == LEGACY_EVENT_TAGS[e["event_id"]])
+        if e["level"] not in LEVELS or (not known_legacy and (e["kind"] not in KINDS or e["status"] not in STATUSES)):
             raise ValueError(f"{key}: unknown level/kind/status")
         if e["project"] != "touhou_taisei_rl":
             raise ValueError(f"{key}: unexpected project")
@@ -84,7 +92,8 @@ def validate(events):
             raise ValueError(f"{key}: evidence must be a list")
         for ref in e["evidence"]:
             if (not isinstance(ref, dict)
-                    or ref.get("type") not in {"commit", "workflow", "issue", "source", "branch", "artifact", "report"}
+                    or ref.get("type") not in ({"commit", "workflow", "issue", "source", "branch", "artifact", "report"}
+                                                  | (LEGACY_EVIDENCE_TYPES if known_legacy else set()))
                     or not isinstance(ref.get("url"), str)
                     or not ref["url"].startswith("https://")):
                 raise ValueError(f"{key}: malformed evidence reference")
@@ -129,7 +138,7 @@ def summary(events):
     native_verified = [e for e in events if e["kind"] == "measurement"
                        and e["metrics"].get("verified_environment") == "native_reexecuted_and_verified"]
     newest = events[-1] if events else None
-    pending = [e for e in events if e["status"] in {"proposed", "blocked", "review_required"}]
+    pending = [e for e in events if e["status"] in {"proposed", "blocked", "review_required"} or e["review_required"]]
     return {
         "total_events": len(events),
         "levels": by_level, "status_counts": by_status,
