@@ -188,11 +188,9 @@ def _resume_checkpoint(path, cfg, policy_type, total_steps, resume_log,
     config_matches=saved_config.keys()==expected_config.keys()
     if config_matches:
         for key,expected in expected_config.items():
-            saved=saved_config[key]
-            if key in path_fields and saved is not None and expected is not None:
-                saved=os.path.normcase(os.path.normpath(saved))
-                expected=os.path.normcase(os.path.normpath(expected))
-            if saved!=expected:
+            if key in path_fields:
+                continue
+            if saved_config[key]!=expected:
                 config_matches=False;break
     if not config_matches:raise ValueError('Resume checkpoint env config mismatch')
     try:

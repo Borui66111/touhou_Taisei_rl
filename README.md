@@ -10,6 +10,8 @@ This update adds a PowerShell/WSL2 installer, pure PyTorch PPO, proper time-limi
 
 # Native Touhou-style RL: Taisei integration (Phase 1)
 
+Remote headless PPO quickstart and handoff: [my_test/README_REMOTE.md](my_test/README_REMOTE.md).
+
 **Project objective:** RL evaluation and training on the actual, open-source Taisei game logic, not a handmade physics approximation. Target: full bullet-hell difficulty, boss offense, native grazing, collision safety, and reproducible evaluation.
 
 ## Status (2026-10-18)

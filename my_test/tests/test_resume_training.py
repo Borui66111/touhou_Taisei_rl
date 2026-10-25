@@ -3,6 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -11,7 +12,7 @@ import torch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from native_rl.env import EnvConfig
-from native_rl.torch_ppo import SkillActorCritic, checkpoint, train
+from native_rl.torch_ppo import SkillActorCritic, _resume_checkpoint, checkpoint, train
 
 
 class FakeEnv:
@@ -202,6 +203,54 @@ class TestResumeTraining(unittest.TestCase):
                     train(cfg, outfile=root/'new.pt', total_steps=129,
                           policy_type='legacy', resume=source, log_path=root/'new.jsonl')
                 env.assert_not_called()
+
+    def test_resume_accepts_different_machine_local_paths(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            cfg, source, original = self.fixture(root)
+            worker_cfg = replace(cfg, library_path='/worker/native/libtaisei_sim.so',
+                                 resource_path='/worker/taisei/resources',
+                                 storage_path='/worker/taisei/storage')
+
+            resumed, _, steps, updates = _resume_checkpoint(
+                source, worker_cfg, 'skill', 129, None)
+
+            self.assertEqual((steps, updates), (128, 9))
+            self.assertEqual(resumed['config'], original['config'])
+            stored = torch.load(source, map_location='cpu', weights_only=False)
+            self.assertEqual(stored['config'], original['config'])
+
+    def test_resume_rejects_changed_environment_semantics(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            cfg, source, _ = self.fixture(root)
+            changes = {
+                'stage_id': 2,
+                'difficulty': 3,
+                'character': 1,
+                'shot_mode': 1,
+                'practice': True,
+                'frames_per_action': 2,
+                'max_frames': 9999,
+            }
+
+            for field, value in changes.items():
+                with self.subTest(field=field):
+                    with self.assertRaisesRegex(ValueError, 'env config mismatch'):
+                        _resume_checkpoint(source, replace(cfg, **{field: value}),
+                                           'skill', 129, None)
+
+    def test_resume_rejects_different_skill_mask_semantics(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            cfg, source, _ = self.fixture(root)
+            payload = torch.load(source, map_location='cpu', weights_only=False)
+            payload['skill_action_mask_version'] = 'taisei_skill_mask_v1'
+            torch.save(payload, source)
+
+            with self.assertRaisesRegex(ValueError, 'mask version mismatch'):
+                _resume_checkpoint(source, cfg, 'skill', 129, None,
+                                   skill_action_mask_version='taisei_skill_mask_v2_respawn')
 
 
 if __name__ == '__main__':
