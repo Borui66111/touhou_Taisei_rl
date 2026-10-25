@@ -39,3 +39,11 @@
 **Reason:** Existing full-game PPO controls both movement and consumables, while per-alive-frame reward is +1 and death costs -10. No controlled movement-only reward study yet distinguishes flawed reward incentives from deficient observations or learning method.
 
 **Fix:** Created `e1_train_movement.py` with two 20k interaction movement-only PPO reward arms, `e1_summarize.py` with matched 16-seed descriptive evaluation, `run_e1_movement.sh` with real Taisei build/smoke/determinism gate, and `test_e1_plan.py` with no-skill, task, budget and sealed-seed safety assertions. No auto promotion and no fabricated native results. Revisit hypotheses after CI evidence appears.
+
+## 2026-10-25 — E1 negative result and E2 behavior trace mechanism investigation
+
+**Issue:** In authentic Easy Stage1 native E1 run 40187280987, calibrated survival-first movement-only reward failed to outperform the original reward and both trained policies were worse than the geometric heuristic. Reward-only tuning on ~7 completed episodes/arm did not produce competent dodging.
+
+**Reason:** Although reward scaling was a plausible strategy hypothesis, the current observation/action/temporal representation may be insufficient for anticipatory hazard avoidance, and the 20k training budget may provide too few meaningful entire encounters.
+
+**Fix/next diagnostic:** Before more heavy training, create an isolated native E2 trajectory analysis: reuse fixed SHA256 checkpoints from E1 run, build real engine, collect action-level trajectories for 4 paired development seeds and geometric heuristic, measure direction switches, border pushing, closest-approach risk proxies, and first recorded death increments. Add fail-closed tests for malformed/forbidden seeds. No external paid compute or champion promotion. **Validation:** E1 CI and determinism passed; E2 CI run 40188054001 still needs native trace results. Danger scores are approximate and are not certified collision predictions.
