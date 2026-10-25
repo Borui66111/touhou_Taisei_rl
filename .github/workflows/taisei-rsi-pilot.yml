@@ -1,10 +1,7 @@
 name: Taisei RSI pilot (native, fail closed)
 
+# Archived CI experiment: manual invocation only; local execution is primary.
 on:
-  push:
-    branches: [research/rsi-automation-v1]
-    paths:
-      - "research/rsi/PILOT_RUN_REQUEST.md"
   workflow_dispatch: {}
 
 permissions:
