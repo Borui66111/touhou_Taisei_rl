@@ -1,10 +1,7 @@
 name: E2 native risk-aware movement teacher (manual gated experiment)
 
+# Archived CI experiment: manual invocation only; local execution is primary.
 on:
-  push:
-    branches: [research/rsi-automation-v1]
-    paths:
-      - "research/rsi/E2_TEACHER_RUN_REQUEST.md"
   workflow_dispatch: {}
 
 permissions:
