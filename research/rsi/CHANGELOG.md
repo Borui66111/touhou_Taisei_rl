@@ -31,3 +31,15 @@
 **Fix:** On the disposable GitHub Actions runner, independently build tagged `taisei-project/SDL` as a shared library; expose pkg-config and loader paths so unchanged pinned Taisei resolves a compatible shared SDL3 dependency. Avoid rewriting upstream gameplay sources.
 
 **Validation:** Await run 40122713708; no native training success is claimed yet.
+
+## 2026-10-26 — E2 native teacher and budget-safe workflow routing
+
+**Issue:** Real native movement E1 traces show near-constant movements and boundary-pushing proxies; skill-aware replay also records 1016 consecutive Left frames. Previous reward changes failed to demonstrate reliable dodging. Separately, the pilot's broad `research/rsi/**` push trigger started costly native builds after research-only changes; its recent runner failed because `zstandard` did not provide the `backports.zstd` import required by pinned Taisei resource packaging.
+
+**Reason:** The current PPO policy lacks explicit candidate-action threat clearance and boundary constraints, so reward changes alone may not yield tactical movement. CI triggers were too broad and the Python Zstandard dependency did not match the upstream packer imports.
+
+**Fix:** Added a deterministic predictive-risk and wall-aware baseline controller in `research/rsi/risk_aware_teacher.py`, eight source-unit tests, a 16-development-seed native Easy comparison protocol with old heuristic, a fail-closed paired evaluator and a separate opt-in CI workflow. Changed the native pilot to explicit request-file triggering, installed and import-checked `backports.zstd`, and retained a 60-minute limit. Canonical branch unchanged.
+
+**Verification:** Source-only teacher/comparison tests passed in GitHub Actions run 40212565935. Genuine native E2 evaluation is **not yet executed** because prior native pilot run 40212525844 remains active. Success in source tests is not evidence of learned dodging, improvement, or live render parity. No checkpoint was replaced or promoted.
+
+**Next:** Run the isolated E2 native comparison when the active native runner is finished, inspect metadata/episode records and decide whether to research teacher-distilled PPO or revise the hazard model.
