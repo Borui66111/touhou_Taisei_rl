@@ -1,0 +1,58 @@
+name: RSI research integrity and local-demo format checks
+
+on:
+  push:
+    branches: [research/rsi-automation-v1]
+    paths:
+      - "research/rsi/trajectory/**"
+      - "research/rsi/competence_eval.py"
+      - "research/rsi/test_competence_eval.py"
+      - "research/rsi/train_reward_ablation.py"
+      - "research/rsi/test_reward_ablation.py"
+      - "research/rsi/policy_format_preflight.py"
+      - "research/rsi/test_policy_format_preflight.py"
+      - ".github/workflows/rsi-research-validation.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  validation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Check append-only trajectory history
+        run: |
+          python - <<'PY'
+          import pathlib, subprocess
+          p="research/rsi/trajectory/events.jsonl"
+          current=pathlib.Path(p).read_bytes()
+          prior=subprocess.run(["git","show","HEAD^:"+p],capture_output=True)
+          if prior.returncode==0:
+              assert current.startswith(prior.stdout), "Ledger history mutated rather than extended"
+          PY
+      - name: Validate research and format tests (no native game fallback)
+        run: |
+          python -m unittest discover -s research/rsi/trajectory -p 'test_*.py' -v
+          python -m unittest discover -s research/rsi -p 'test_policy_format_preflight.py' -v
+          python -m unittest discover -s research/rsi -p 'test_competence_eval.py' -v
+          python -m unittest discover -s research/rsi -p 'test_reward_ablation.py' -v
+      - name: Generate research timeline digest
+        run: |
+          python research/rsi/trajectory/ledger.py summarize \
+            --ledger research/rsi/trajectory/events.jsonl \
+            --out research_evidence/rsi_digest.json
+      - name: Save audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rsi-research-integrity
+          path: research_evidence/rsi_digest.json
+          if-no-files-found: ignore
