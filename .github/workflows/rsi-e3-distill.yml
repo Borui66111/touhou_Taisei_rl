@@ -1,0 +1,54 @@
+name: E3 authentic Taisei teacher distillation and bounded PPO
+
+on:
+  push:
+    branches: [research/rsi-automation-v1]
+    paths:
+      - "research/rsi/E3_DISTILL_RUN_REQUEST.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taisei-native-serial
+  cancel-in-progress: false
+
+jobs:
+  native-distillation:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install actual pinned native Taisei, resource-packer and PyTorch dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config gettext \
+            libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev libpng-dev libssl-dev \
+            libopusfile-dev libunibreak-dev libgl1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxrender-dev libxkbcommon-dev libwayland-dev \
+            wayland-protocols
+          for p in libcglm-dev libsdl3-dev; do
+            if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
+          done
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'backports.zstd' torch
+          python -c 'from backports.zstd import ZstdCompressor,ZstdDecompressor; print("Taisei resource packer ready")'
+      - name: Preflight fixed E3 training and evaluation plan without simulated gameplay
+        run: |
+          python -m unittest discover -s research/rsi -p 'test_e3_distill_plan.py' -v
+          python research/rsi/e3_distill_native.py --library /not-present/taisei.so --resource-path /not-present/resources --outdir /tmp/e3-preflight --preflight-only
+      - name: Build genuine Taisei, smoke, deterministic replay, train BC/PPO and compare
+        working-directory: my_test
+        run: bash ../research/rsi/run_e3_distill.sh
+      - name: Upload all evidence, including checkpoints, on success or failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taisei-e3-distillation-${{ github.run_id }}
+          path: my_test/results/rsi_e3_distill_v1/
+          if-no-files-found: warn
+          retention-days: 21
