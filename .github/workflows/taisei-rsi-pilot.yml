@@ -5,7 +5,9 @@ on:
     branches: [research/rsi-automation-v1]
     paths:
       - ".github/workflows/taisei-rsi-pilot.yml"
-      - "research/rsi/**"
+      - "research/rsi/run_pilot.sh"
+      - "research/rsi/build_native_with_shared_sdl3.sh"
+      - "my_test/native_rl/**"
   workflow_dispatch: {}
 
 permissions:
@@ -18,7 +20,7 @@ concurrency:
 jobs:
   native-pilot:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
