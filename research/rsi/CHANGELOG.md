@@ -43,3 +43,13 @@
 **Verification:** Source-only teacher/comparison tests passed in GitHub Actions run 40212565935. Genuine native E2 evaluation is **not yet executed** because prior native pilot run 40212525844 remains active. Success in source tests is not evidence of learned dodging, improvement, or live render parity. No checkpoint was replaced or promoted.
 
 **Next:** Run the isolated E2 native comparison when the active native runner is finished, inspect metadata/episode records and decide whether to research teacher-distilled PPO or revise the hazard model.
+
+## 2026-10-26 — Cross-workflow native concurrency guard
+
+**Observation:** At the 00:40 SGT check, native pilot run `40212525844` was still `in_progress` at the build/smoke/train/evaluate step; source-level diagnostics had passed. GitHub job logs for the active job were temporarily unavailable (`BlobNotFound`), so no gameplay or training outcome is inferred. The earlier pilot `40211694671` had failed during the native step; the repository records the `backports.zstd` resource-packer diagnosis and a dependency repair in the newer pilot workflow.
+
+**Issue:** The pilot and the opt-in E2 teacher workflow used different Actions `concurrency.group` values (`taisei-rsi-pilot` vs `taisei-native-serial`), so CI concurrency did not actually serialize native work *across* these workflows.
+
+**Fix:** Commit `a17bf744f49523ab25448f4c6edb3aed72ad6bfe` changes the pilot group to `taisei-native-serial`, matching the E2 teacher workflow. This protects **future** workflow runs; it does not retroactively change the concurrency group of the already-running pilot.
+
+**Next gate:** Recheck `40212525844` completion and artifacts; do not submit an E2 run request while the older pilot remains active. No new native run was dispatched, no checkpoint promoted, and sealed final seeds remain excluded.
