@@ -1,0 +1,88 @@
+{
+  "schema_version": "taisei_rsi_native_pilot_v1",
+  "experiment_id": "NATIVE_EASY_PILOT_001",
+  "provenance": {
+    "run_id": 40185526694,
+    "run_url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40185526694",
+    "code_commit": "b45fa2eed9091dbdc099f835c8c872dac22dd93c",
+    "native_simulator_repository": "https://github.com/touhourl/taisei-sim",
+    "native_simulator_commit": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "artifact_id": 12595977841,
+    "artifact_expires_at": "2026-11-08T10:44:29Z",
+    "artifact_name": "taisei-rsi-pilot-40185526694",
+    "checkpoint_sha256": "0e7ac1d244a6d8c2d6696efedffdc190d92767e4c83f5a7884f9756c55180955"
+  },
+  "task": {
+    "stage_id": 1,
+    "difficulty_id": 1,
+    "difficulty_label": "Easy",
+    "practice": false,
+    "player_character": "default Taisei engine Reimu A",
+    "training_seed": 48010,
+    "smoke_seed": 42000,
+    "evaluation_seeds": [
+      42100,
+      42101,
+      42102,
+      42103
+    ],
+    "sealed_final_seeds": "43000-43099 unused"
+  },
+  "execution": {
+    "native_build": "passed",
+    "taisei_shared_library": "libtaisei_sim.so",
+    "smoke": "passed",
+    "smoke_frames": 300,
+    "smoke_final_gameplay_digest": "7460280547467020504",
+    "ppo_training": "passed",
+    "ppo_training_steps": 1024,
+    "ppo_updates": 4,
+    "ppo_completed_episodes": 0,
+    "native_evaluation": "passed",
+    "policy_promoted": false
+  },
+  "results": [
+    {
+      "policy": "heuristic",
+      "n": 4,
+      "clears": 0,
+      "mean_deaths": 3,
+      "mean_alive_frames": 1630.75,
+      "mean_bombs": 0,
+      "mean_boss_damage": 0,
+      "mean_reward": 1590.78125,
+      "mean_graze": 31.25
+    },
+    {
+      "policy": "random",
+      "n": 4,
+      "clears": 0,
+      "mean_deaths": 3,
+      "mean_alive_frames": 1468.25,
+      "mean_bombs": 0,
+      "mean_boss_damage": 0,
+      "mean_reward": 1428.27325,
+      "mean_graze": 23.25
+    },
+    {
+      "policy": "pilot_skill_ppo",
+      "n": 4,
+      "clears": 0,
+      "mean_deaths": 3,
+      "mean_alive_frames": 3455,
+      "mean_bombs": 9,
+      "mean_boss_damage": 17381.715576171875,
+      "mean_reward": 3762.6695,
+      "mean_graze": 35.5
+    }
+  ],
+  "derived": {
+    "mean_alive_frame_ratio_ppo_over_heuristic": 2.118657059635137,
+    "mean_alive_frame_difference_ppo_minus_heuristic": 1824.25
+  },
+  "interpretation": {
+    "claim_level": "native_execution_verified; gameplay_skill_gain_UNPROVEN",
+    "limitation": "Only 4 development seeds and PPO trained for 1024 steps without completing a training episode; the observed survival advantage is confounded by nine Bombs per trial and requires matched same-checkpoint skill-off ablation.",
+    "next_experiment": "research/rsi-skill-ablation-v1: identical checkpoint and movement network, skill allowed versus skill forcibly NONE, identical Easy seeds; no automatic promotion"
+  }
+}
