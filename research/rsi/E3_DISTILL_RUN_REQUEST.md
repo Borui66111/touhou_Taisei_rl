@@ -16,3 +16,11 @@
 - Sealed 43000-43099 seeds never used
 - 60-minute CI timeout, one native job at a time. No paid infrastructure or other branch.
 - Trigger: this file creation launches .github/workflows/rsi-e3-distill.yml.
+
+## Bounded recovery request — 2026-10-26
+
+- Experiment attempt: `E3_NATIVE_TEACHER_DISTILL_V1_RECOVERY_01` (same preregistered 12k demonstrations + 8k PPO decisions; no increased budget).
+- Previous failed run: https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40214399926 (native smoke and BC passed; PPO startup segfault).
+- Recovery commits: `610da318`, `7d567717`, `2288091f` (faulthandler, fresh PPO process, source contract test).
+- Request exactly one bounded GitHub Actions rerun on canonical branch; fail closed and upload artifacts; no champion promotion, no sealed seeds.
+- Do not interpret BC validation accuracy as gameplay improvement. Require 16 matched native evaluation episodes per neural policy.
