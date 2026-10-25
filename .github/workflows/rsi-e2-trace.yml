@@ -1,0 +1,68 @@
+name: Taisei RSI E2 native movement trajectory diagnostics
+
+on:
+  push:
+    branches: [research/rsi-movement-trace-e2]
+    paths:
+      - ".github/workflows/rsi-e2-trace.yml"
+      - "research/rsi/e2_trace_diagnostics.py"
+      - "research/rsi/run_e2_trace.sh"
+      - "research/rsi/test_e2_trace.py"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: taisei-rsi-e2-trace
+  cancel-in-progress: false
+
+jobs:
+  native-trajectory-diagnostics:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Verify one-factor design, native task, sealed seeds and bounded compute
+        run: |
+          python -m unittest discover -s research/rsi -p test_e2_trace.py -v
+          bash -n research/rsi/run_e2_trace.sh
+      - name: Install actual native game build dependencies and PPO
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config gettext \
+            libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev libpng-dev libssl-dev \
+            libopusfile-dev libunibreak-dev libgl1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxrender-dev libxkbcommon-dev libwayland-dev \
+            wayland-protocols
+          for p in libcglm-dev libsdl3-dev; do
+            if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
+          done
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'pytest>=8' \
+            'backports.zstd' torch --index-url https://pypi.org/simple
+          python -c 'from backports.zstd import ZstdCompressor, ZstdDecompressor; print("pack.py zstd imports OK")'
+      - name: Reuse immutable trained checkpoints from successful E1
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 40187280987
+          name: taisei-rsi-e1-40187280987
+          github-token: ${{ github.token }}
+          path: my_test/results/e1_download
+      - name: Build native engine and capture hazard/movement diagnostic traces
+        working-directory: my_test
+        run: |
+          bash ../research/rsi/run_e2_trace.sh
+      - name: Upload evidence even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taisei-rsi-e2-${{ github.run_id }}
+          path: |
+            my_test/results/rsi_e2/
+          if-no-files-found: warn
+          retention-days: 14
