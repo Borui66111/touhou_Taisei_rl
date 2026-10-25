@@ -39,3 +39,10 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - Repaired XTEST dependency run 40122420549 proceeded past SDL3 CMake and failed when Meson refused non-PIC `SDL3_static` while linking `libtaisei_sim.so` (pinned wrapper forces static SDL).
 - Added `research/rsi/build_native_with_shared_sdl3.sh`: builds the SDL source tag named in Taisei's wrapper as an external **shared** library in the temporary CI runner, without modifying the pinned game source checkout. `run_pilot.sh` now supplies the package path and runtime loader path.
 - Run 40122713708 is the first attempt of the shared-SDL workaround. Its native smoke, training and results are **unverified** until its job actually completes.
+
+## User-directed canonical branch policy — 2026-10-25
+
+- **Default for ALL future Taisei RSI development:** `research/rsi-automation-v1` (the branch containing this file).
+- Standing instructions are in `research/rsi/BRANCH_POLICY.md`: **do not create an experimental branch** absent a verified technical reason documented in the trajectory, with an integration plan and review where consequential.
+- Prior work in `research/rsi-easy-curriculum-fix`, `research/rsi-competence-v1`, `research/rsi-meta-controller-v1` and other experiment branches is historical source/evidence, **not automatically merged** into this currently older branch. Before reusing fixes, carefully review and integrate compatible, verified changes into this selected branch without rewriting history.
+- Daily autonomous RSI research and hourly milestone monitor have both been updated to target this canonical branch. Check GitHub Actions branch triggers after each workflow integration.
