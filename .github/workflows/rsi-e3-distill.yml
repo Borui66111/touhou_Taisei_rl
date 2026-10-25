@@ -1,10 +1,7 @@
 name: E3 authentic Taisei teacher distillation and bounded PPO
 
+# Archived CI experiment: manual invocation only; local execution is primary.
 on:
-  push:
-    branches: [research/rsi-automation-v1]
-    paths:
-      - "research/rsi/E3_DISTILL_RUN_REQUEST.md"
   workflow_dispatch: {}
 
 permissions:
