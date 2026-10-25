@@ -1,0 +1,223 @@
+{
+  "schema_version": "taisei_rsi_e1_native_movement_reward_ablation",
+  "experiment_id": "E1_NATIVE_MOVEMENT_REWARD_001",
+  "provenance": {
+    "github_run_id": 40187280987,
+    "run_url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40187280987",
+    "commit_sha": "07ad672a595093107277b2e1fa398e65c36b6b64",
+    "pinned_simulator_sha": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "artifact_id": 12596776287,
+    "artifact_expires_at": "2026-11-08T11:08:31Z",
+    "checkpoint_sha256": {
+      "baseline": "a2a0ce0d4716945b228641844f65620ed1548a4342f7f891539e98303c1eed7b",
+      "survival_first": "5526812cb58988849165389db39eec50add78d0dfc41840f5eba1ecc491b93b8"
+    }
+  },
+  "task": {
+    "native": true,
+    "stage_id": 1,
+    "difficulty_id": 1,
+    "practice": false,
+    "action_space": "legacy 18 movement only, no neural Bomb/Surge decisions",
+    "training_seed": 48020,
+    "evaluation_seeds": [
+      42100,
+      42101,
+      42102,
+      42103,
+      42104,
+      42105,
+      42106,
+      42107,
+      42108,
+      42109,
+      42110,
+      42111,
+      42112,
+      42113,
+      42114,
+      42115
+    ],
+    "final_seeds": "43000-43099 sealed"
+  },
+  "execution": {
+    "build_success": true,
+    "native_smoke_success": true,
+    "native_determinism_pass": true,
+    "identical_native_frames": 600,
+    "native_determinism_final_digest": "14906249222316660935",
+    "training_steps_each_arm": 20000,
+    "rollout_steps": 512,
+    "ppo_updates_each_arm": 40,
+    "training_completed_episodes_challenger": 7,
+    "unit_tests_passed": 6,
+    "no_policy_promotion": true
+  },
+  "intervention": {
+    "changed": "reward bundle only",
+    "shared_ppo": {
+      "learning_rate": 0.0003,
+      "gamma": 0.995,
+      "rollout_steps": 512,
+      "action_stride": 1
+    },
+    "baseline": {
+      "survival_weight": 1,
+      "damage_weight": 0.02,
+      "graze_weight": 0.001,
+      "death_penalty": -10,
+      "loss_penalty": -10,
+      "win_bonus": 20
+    },
+    "survival_first": {
+      "survival_weight": 0.002,
+      "damage_weight": 0.001,
+      "graze_weight": 0,
+      "death_penalty": -30,
+      "loss_penalty": -30,
+      "win_bonus": 100
+    }
+  },
+  "results": {
+    "heuristic": {
+      "n": 16,
+      "clears": 0,
+      "mean_alive_frames": 1659.875,
+      "mean_deaths": 3,
+      "mean_bombs": 0,
+      "mean_boss_damage": 562.670166015625,
+      "mean_graze": 31.4375
+    },
+    "original_reward_ppo": {
+      "n": 16,
+      "clears": 0,
+      "mean_alive_frames": 1036,
+      "mean_deaths": 3,
+      "mean_bombs": 0,
+      "mean_boss_damage": 0,
+      "mean_graze": 11.4375
+    },
+    "survival_first_ppo": {
+      "n": 16,
+      "clears": 0,
+      "mean_alive_frames": 901.0625,
+      "mean_deaths": 3,
+      "mean_bombs": 0,
+      "mean_boss_damage": 0,
+      "mean_graze": 10.9375
+    },
+    "paired_aliveness": {
+      "mean_survival_first_minus_original": -134.9375,
+      "bootstrap_95pct_ci_conditional_on_one_training_seed": [
+        -176.375,
+        -105.8125
+      ],
+      "per_seed": [
+        {
+          "seed": 42100,
+          "original_reward_alive_frames": 1049,
+          "survival_first_alive_frames": 935,
+          "delta_survival_minus_original": -114
+        },
+        {
+          "seed": 42101,
+          "original_reward_alive_frames": 1079,
+          "survival_first_alive_frames": 910,
+          "delta_survival_minus_original": -169
+        },
+        {
+          "seed": 42102,
+          "original_reward_alive_frames": 1045,
+          "survival_first_alive_frames": 918,
+          "delta_survival_minus_original": -127
+        },
+        {
+          "seed": 42103,
+          "original_reward_alive_frames": 1027,
+          "survival_first_alive_frames": 911,
+          "delta_survival_minus_original": -116
+        },
+        {
+          "seed": 42104,
+          "original_reward_alive_frames": 1104,
+          "survival_first_alive_frames": 703,
+          "delta_survival_minus_original": -401
+        },
+        {
+          "seed": 42105,
+          "original_reward_alive_frames": 1002,
+          "survival_first_alive_frames": 909,
+          "delta_survival_minus_original": -93
+        },
+        {
+          "seed": 42106,
+          "original_reward_alive_frames": 1003,
+          "survival_first_alive_frames": 926,
+          "delta_survival_minus_original": -77
+        },
+        {
+          "seed": 42107,
+          "original_reward_alive_frames": 1032,
+          "survival_first_alive_frames": 919,
+          "delta_survival_minus_original": -113
+        },
+        {
+          "seed": 42108,
+          "original_reward_alive_frames": 1059,
+          "survival_first_alive_frames": 922,
+          "delta_survival_minus_original": -137
+        },
+        {
+          "seed": 42109,
+          "original_reward_alive_frames": 1010,
+          "survival_first_alive_frames": 927,
+          "delta_survival_minus_original": -83
+        },
+        {
+          "seed": 42110,
+          "original_reward_alive_frames": 1025,
+          "survival_first_alive_frames": 914,
+          "delta_survival_minus_original": -111
+        },
+        {
+          "seed": 42111,
+          "original_reward_alive_frames": 1002,
+          "survival_first_alive_frames": 813,
+          "delta_survival_minus_original": -189
+        },
+        {
+          "seed": 42112,
+          "original_reward_alive_frames": 1009,
+          "survival_first_alive_frames": 927,
+          "delta_survival_minus_original": -82
+        },
+        {
+          "seed": 42113,
+          "original_reward_alive_frames": 1024,
+          "survival_first_alive_frames": 947,
+          "delta_survival_minus_original": -77
+        },
+        {
+          "seed": 42114,
+          "original_reward_alive_frames": 1047,
+          "survival_first_alive_frames": 911,
+          "delta_survival_minus_original": -136
+        },
+        {
+          "seed": 42115,
+          "original_reward_alive_frames": 1059,
+          "survival_first_alive_frames": 925,
+          "delta_survival_minus_original": -134
+        }
+      ]
+    }
+  },
+  "interpretation": "Both real movement-only PPO arms fail to clear Easy Stage 1, lose all 3 lives, and are weaker than geometric heuristic; in this one-training-seed, 20k-step test the reward bundle reduces mean survival for all 16 eval seeds. Do not infer universal reward failure; consider deficient movement representation, policy horizon, sample budget, or different strategy. Next run should prioritize cheap native movement traces and threat-conditioned diagnostics before scaling training.",
+  "limits": [
+    "Single training initialization/seed 48020; paired bootstrap spans evaluation seeds but not training-run variance.",
+    "Several reward coefficients changed as a single intervention; individual effects are unidentified.",
+    "20k steps yielded only ~7 episodes/arm and zero wins; limited exploration.",
+    "No first-death telemetry or confirmed manual pickup event instrumentation, no verified dodging behavior."
+  ],
+  "decision": "Do not promote. Diagnostic/pivot to state representation, predictive risk features, action stability and teacher baseline on native game."
+}
