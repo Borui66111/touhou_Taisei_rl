@@ -75,3 +75,15 @@
 **Non-training fix:** Commits `610da318` (Python faulthandler and native teacher progress/reset events), `7d567717` (PPO via a fresh subprocess using the existing native PPO CLI), and `2288091f` (source command-contract test). Logged event `T-20261025-28`. The experiment's 12k+8k native interaction budget and seed partitions are unchanged. These changes have not yet passed a native rerun; no additional CI job was requested.
 
 **Next:** Run updated source preflight; after explicit approval for another bounded native run, inspect whether the fresh PPO process resolves the crash, then evaluate BC-only and BC→PPO over the 16 development game seeds. No champion promotion or sealed-seed access.
+
+## 2026-10-26 — E3 completed with PPO regression; E4 class-aware imitation candidate
+
+**Issue:** E3 initially crashed at PPO native reinitialization, and once recovered its BC learner was much weaker than teacher. PPO fine-tuning reduced learned survival further.
+
+**Reason:** Fresh-process native handoff fixed runtime crash. Actual native Stage1 Easy evaluation showed BC 1,346.5 mean alive frames and BC→PPO 1,047.56 across 16 paired seeds, both 0 clears and no boss damage. Only ~1 completed teacher episode was represented in 12k demonstrations, with Stay action accounting for 69.3%; random-frame imitation accuracy is insufficient to measure evasive behavior.
+
+**Fix:** Archived E3 full native run 40219788151 and model identities; implemented a fixed, budget-zero (for new native training) E4 candidate that reuses E3 demonstration/checkpoint artifacts and blends weighted and ordinary CE for rarer movement labels. Prepared a source hash validator and an opt-in, 60-minute native evaluation with a new set of 16 paired Easy game seeds including scripted teacher for context.
+
+**Verification:** E3 full native training/evaluation succeeded; source artifact SHA verified. One local offline exploratory reweighting test found macro recall increase 40.6%→49.2%, no change in 83.9% frame accuracy; **not yet proven better in native game**. No champion promotion, no new branch, no sealed seeds used.
+
+**Next:** Run E4, validate original dataset and checkpoint SHA, source tests, paired native survival/deaths/clears and contrast with unchanged teacher. Choose representation/curriculum pivot if improvement does not transfer.
