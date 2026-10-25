@@ -7,6 +7,7 @@ and no automatic champion promotion. Legacy 528-input movement-only policy.
 """
 from __future__ import annotations
 import argparse
+import faulthandler
 import hashlib
 import json
 import math
@@ -62,7 +63,11 @@ def collect_demonstrations(cfg,steps,seed):
     episodes=0
     with TaiseiEnv(cfg) as env:
         obs,_=env.reset(seed=seed)
-        for _ in range(steps):
+        for step_index in range(steps):
+            if step_index % 250 == 0:
+                print(json.dumps({"event":"native_teacher_progress", "step":step_index,
+                                  "episodes_finished":episodes,
+                                  "logical_frame":obs.get("logical_frame")}), flush=True)
             x=features(obs)
             if x.shape!=(N_FEATURES,) or not np.isfinite(x).all():
                 raise ValueError("Unexpected or nonfinite native observation feature vector")
@@ -72,7 +77,13 @@ def collect_demonstrations(cfg,steps,seed):
             obs,_,terminated,truncated,_=env.step(a)
             if terminated or truncated:
                 episodes+=1
-                obs,_=env.reset(seed=seed+episodes)
+                next_seed=seed+episodes
+                print(json.dumps({"event":"native_teacher_reset_begin", "step":step_index+1,
+                                  "episode_count":episodes, "next_seed":next_seed,
+                                  "terminated":bool(terminated),"truncated":bool(truncated)}),flush=True)
+                obs,_=env.reset(seed=next_seed)
+                print(json.dumps({"event":"native_teacher_reset_complete", "step":step_index+1,
+                                  "episode_count":episodes,"logical_frame":obs.get("logical_frame")}),flush=True)
     return np.stack(state_vectors),np.asarray(labels,dtype=np.int64),episodes
 
 
@@ -111,6 +122,7 @@ def bc_pretrain(states,actions,seed=48030,epochs=16,batch_size=256):
 
 
 def main(argv=None):
+    faulthandler.enable(all_threads=True)
     p=argparse.ArgumentParser()
     p.add_argument("--library",required=True)
     p.add_argument("--resource-path",required=True)
