@@ -14,6 +14,7 @@ import math
 import os
 from pathlib import Path
 import random
+import subprocess
 import sys
 
 ROOT=Path(__file__).resolve().parents[2]
@@ -121,6 +122,17 @@ def bc_pretrain(states,actions,seed=48030,epochs=16,batch_size=256):
     return model,history
 
 
+def ppo_subprocess_command(library,resource_path,bc_model,ppo_model,log,ppo_steps,ppo_seed):
+    """Fresh OS process: native Taisei's global lifecycle is not safely reentrant."""
+    return [sys.executable, str(ROOT/"my_test/scripts/train_torch_ppo.py"),
+            "--library",str(library),"--resource-path",str(resource_path),
+            "--stage","1","--difficulty","1","--frames-per-action","1",
+            "--max-frames","10000","--steps",str(ppo_steps),
+            "--rollout-steps","512","--lr","3e-4","--seed",str(ppo_seed),
+            "--gamma",".995","--device","cpu","--policy-type","legacy",
+            "--init",str(bc_model),"--out",str(ppo_model),"--log",str(log)]
+
+
 def main(argv=None):
     faulthandler.enable(all_threads=True)
     p=argparse.ArgumentParser()
@@ -172,10 +184,15 @@ def main(argv=None):
                  "bc_final_frame_holdout_accuracy":history[-1]["random_frame_holdout_accuracy"],
                  "status":"bc_completed_ppo_pending"})
     meta.write_text(json.dumps(plan,indent=2)+"\n",encoding="utf-8")
-    train(cfg,outfile=str(ppo_model),total_steps=a.ppo_steps,rollout_steps=512,
-          learning_rate=3e-4,seed=a.ppo_seed,device="cpu",gamma=.995,
-          policy_type="legacy",skill_action_mask=False,init=str(bc_model),
-          log_path=str(log))
+    # Native global_shutdown followed by global_init in the SAME Python process
+    # is a suspected source of the E3 run 40214399926 segmentation fault.
+    # The BC checkpoint is durable; launch PPO in a fresh process to isolate
+    # the native engine lifecycle without changing either training budget.
+    print(json.dumps({"event":"e3_phase_boundary","phase":"ppo_fresh_process",
+                      "bc_checkpoint_sha256":plan["bc_checkpoint_sha256"]}),flush=True)
+    subprocess.run(ppo_subprocess_command(a.library,a.resource_path,bc_model,
+                                         ppo_model,log,a.ppo_steps,a.ppo_seed),
+                   check=True)
     plan.update({"status":"bc_and_ppo_completed_unpromoted",
                  "ppo_checkpoint_sha256":hashlib.sha256(ppo_model.read_bytes()).hexdigest()})
     meta.write_text(json.dumps(plan,indent=2)+"\n",encoding="utf-8")
