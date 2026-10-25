@@ -1,0 +1,71 @@
+{
+  "schema_version": "taisei_rsi_native_skill_ablation_v1",
+  "experiment_id": "NATIVE_EASY_SKILL_ABLATION_001",
+  "provenance": {
+    "run_id": 40186512931,
+    "run_url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40186512931",
+    "code_commit": "3d29b8c6ff92b6b2f1297d563045c720f2810c5a",
+    "simulator_commit": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "artifact_id": 12596074177,
+    "artifact_expires_at": "2026-11-08T10:55:48Z",
+    "checkpoint_sha256": "0e7ac1d244a6d8c2d6696efedffdc190d92767e4c83f5a7884f9756c55180955"
+  },
+  "task": {
+    "stage_id": 1,
+    "difficulty_id": 1,
+    "difficulty_name": "Easy",
+    "seeds": [
+      42100,
+      42101,
+      42102,
+      42103
+    ],
+    "practice": false
+  },
+  "intervention": "Evaluate identical checkpoint normally and with skill selection forced NONE, preserving movement logits, using authentic native Taisei gameplay",
+  "result": {
+    "native_pipeline_pass": true,
+    "python_tests_passed": 9,
+    "clears_with_skills": 0,
+    "clears_without_skills": 0,
+    "mean_deaths_both": 3,
+    "mean_alive_frames_with_skills": 3455,
+    "mean_alive_frames_without_skills": 792.25,
+    "mean_bombs_with_skills": 9,
+    "mean_bombs_without_skills": 0,
+    "mean_boss_damage_without_skills": 0,
+    "paired": [
+      {
+        "seed": 42100,
+        "with_skills": 3455,
+        "without_skills": 807,
+        "delta": 2648
+      },
+      {
+        "seed": 42101,
+        "with_skills": 3455,
+        "without_skills": 793,
+        "delta": 2662
+      },
+      {
+        "seed": 42102,
+        "with_skills": 3455,
+        "without_skills": 776,
+        "delta": 2679
+      },
+      {
+        "seed": 42103,
+        "with_skills": 3455,
+        "without_skills": 793,
+        "delta": 2662
+      }
+    ],
+    "mean_paired_alive_frame_delta": 2662.75,
+    "reduction_of_alive_frames_when_disabling_skills_pct": 77.06946454413894
+  },
+  "interpretation": {
+    "claim": "This early PPO model's apparent survival advantage is largely dependent on its Bomb/Surge action channel rather than independently capable movement. Its skill-disabled movement policy performs markedly worse than heuristic (1630.75 alive frames).",
+    "limitations": "Four development seeds and a single 1024-step checkpoint; no death-free stage clears and every arm has three deaths. Do not overgeneralize to all PPO. Skills are ablated online so subsequent trajectories differ. No measure of genuine dodge reactions or collection yet.",
+    "research_decision": "Do not promote candidate. Test whether movement-only PPO improves under survival-first reward versus original dense reward, before adding temporal/threat representations."
+  }
+}
