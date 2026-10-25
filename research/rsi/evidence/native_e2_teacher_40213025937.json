@@ -1,0 +1,60 @@
+{
+  "schema_version": "taisei_rsi_e2_native_teacher_v1",
+  "experiment_id": "E2_NATIVE_RISK_TEACHER_V1",
+  "status": "native_experiment_completed_no_model_promotion",
+  "provenance": {
+    "github_run_id": 40213025937,
+    "workflow_url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40213025937",
+    "code_sha": "9d391c69f4212f6763e75dab2aa75fba1366f4b7",
+    "artifact_id": 12606601536,
+    "artifact_name": "taisei-e2-teacher-40213025937",
+    "pinned_simulator_sha": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "native_smoke_passed": true,
+    "native_determinism_passed": true,
+    "determinism_replay_frames": 600
+  },
+  "task": {
+    "stage": 1,
+    "difficulty": 1,
+    "character": "Reimu A",
+    "game_seed_range": "42100-42115",
+    "episodes_per_policy": 16,
+    "action_space": "18 movement commands, always auto-shoot, no requested Bomb/Special",
+    "max_frames_per_episode": 10000
+  },
+  "baseline": {
+    "policy": "native_rl.planner.heuristic_action",
+    "clears": 0,
+    "mean_alive_frames": 1659.875,
+    "mean_deaths": 3,
+    "mean_bombs": 0,
+    "mean_boss_damage": 562.670166015625,
+    "episodes_truncated": 0,
+    "special_activations": 0,
+    "mean_graze": 31.4375
+  },
+  "candidate": {
+    "policy": "risk_aware_teacher.risk_aware_action",
+    "type": "handcrafted teacher not trained PPO",
+    "clears": 0,
+    "mean_alive_frames": 7598.1875,
+    "mean_deaths": 2.875,
+    "mean_bombs": 0,
+    "mean_boss_damage": 40242.509033203125,
+    "episodes_truncated": 2,
+    "special_activations": 0,
+    "mean_graze": 54.3125
+  },
+  "paired_mean_alive_delta": 5938.3125,
+  "paired_alive_ci_95pct_eval_seeds": [
+    5083.9375,
+    6787.9375
+  ],
+  "ratio_mean_alive": 4.577566081783266,
+  "source_jsonl_sha256": {
+    "baseline": "beac50e4841ab2794146fb88cec987683f8ac05688500307918380cf62dbaa0e",
+    "candidate": "19d7c7c2bc4f2300f56d0741e183e219d3d20dca12a249b74396f24463e32516"
+  },
+  "interpretation": "A source-controlled action-conditioned collision-risk and wall-aware heuristic greatly outperformed the prior geometric heuristic at staying alive on 16 matched Easy development game seeds without skill activations. This is improvement in handcrafted controller performance, NOT a learned neural policy. No stage clears. Two 10k-frame truncations mean aliveness cannot substitute for completion; future learned-policy evaluation must separately track timeouts, phase progress, deaths and actual threat-conditioned dodging.",
+  "next": "E3: bounded authentic native behavior-cloning warm start using risk-aware teacher demonstration states/actions; evaluate BC-only and BC→PPO with fixed observation/action spaces against E1 movement-only PPO. Add rich trace/position audits on key episodes; do not promote without actual learned competence and robustness."
+}
