@@ -12,8 +12,12 @@ assert SCRIPT.count('--difficulty "$EASY_DIFFICULTY"') == 4, (
 assert not re.search(r"--difficulty\s+[02-9](?:\s|$)", SCRIPT), "Wrong/native-invalid difficulty literal"
 assert "difficulty_id=$EASY_DIFFICULTY" in SCRIPT, "Experiment manifest lacks difficulty"
 assert "stage_id=1" in SCRIPT, "Experiment manifest lacks stage"
-assert SCRIPT.count('meson devenv -C "$ROOT/build" python') == 4, (
-    "Meson runtime invocation must directly specify python; separator -- previously failed"
+for required_script in ('smoke_native.py', 'train_torch_ppo.py', 'evaluate_native.py'):
+    assert ('python "$PWD/scripts/' + required_script + '"') in SCRIPT, (
+        f'Runtime call does not use absolute workbench script path for {required_script}'
+    )
+assert SCRIPT.count('meson devenv -C "$ROOT/build" python "$PWD/scripts/') == 4, (
+    "Meson must receive absolute script paths because its devenv working directory is build/"
 )
 assert 'meson devenv -C "$ROOT/build" -- python' not in SCRIPT, (
     "Meson interpreted -- as a command on GitHub runner"
