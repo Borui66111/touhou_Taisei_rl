@@ -4,11 +4,11 @@
 
 **Platform note:** the upstream headless build documents GNU/Linux support; WSL2 Ubuntu is the optional route for headless training below. Separately, this local `my_test` workbench contains experimental Windows rendered-game builds and a PPO export. They are not automatically present in a fresh Git clone or remote collaboration copy, and do not establish official Windows headless support, parity, or performance.
 
-**Fresh-clone scope:** a fresh Git clone or remote collaboration copy does not automatically include prebuilt game/simulator binaries, local build trees, virtual environments, assets, results, checkpoints, policy exports, replays, or logs. In this local workbench, `.venv-winbuild/Scripts/meson.exe`, `wb3/src/taisei.exe`, `wb5_agent_demo/src/taisei.exe`, and `results/ppo_live_export.bin` are present. The optional `patches/live-ppo.patch` is controller integration only; local artifacts are separate from that patch.
+**Fresh-clone scope:** a fresh Git clone or remote collaboration copy does not automatically include prebuilt game/simulator binaries, local build trees, virtual environments, assets, results, checkpoints, policy exports, replays, or logs. In this local workbench, `.venv-winbuild/Scripts/meson.exe`, `wb3/src/taisei.exe`, legacy `wb5_agent_demo/src/taisei.exe`, isolated `rl_skill_v2/src/taisei.exe`, and legacy and skill-v2 policy exports are present. The optional `patches/live-ppo.patch` is controller integration only; local artifacts are separate from that patch.
 
 ## Local Windows rendered-game runs (this workbench only)
 
-Use these commands from the local `my_test` directory; the PPO policy path is relative to it. `wb3` is the human-controlled build. `wb5_agent_demo` provides opt-in live PPO control: menus remain human-controlled until gameplay, when `--rl-policy` supplies the gameplay policy.
+Use these commands from the local `my_test` workbench. `wb3` is human-controlled, `wb5_agent_demo` is legacy movement-only, and `rl_skill_v2` is the current skill-capable demo build. Menus remain human-controlled until gameplay.
 
 Human/manual testing with `wb3`:
 
@@ -16,13 +16,23 @@ Human/manual testing with `wb3`:
 ./.venv-winbuild/Scripts/meson.exe devenv -C ./wb3 ./wb3/src/taisei.exe --renderer gl33
 ```
 
-Live PPO control with `wb5_agent_demo`:
+Skill-v2 PPO control with `rl_skill_v2`:
 
-```text
-./.venv-winbuild/Scripts/meson.exe devenv -C ./wb5_agent_demo ./wb5_agent_demo/src/taisei.exe --renderer gl33 --rl-policy ./results/ppo_live_export.bin
+```powershell
+.\.venv-winbuild\Scripts\python.exe .\scripts\run_live_ppo_windows.py --renderer gl33 --rl-policy .\results\ppo_skill_survival1_maskv2_200k_seed48000_20261023_live.bin
 ```
 
-From `my_test` in the moved workbench, this direct launcher exited 1 silently; stale Meson resource/toolchain paths were found. The one tested fallback reached Stage 1 then Game Over with resource warnings. The concise command above is unverified and does not establish PPO inference or performance. These experimental rendered builds remain local workbench artifacts, not a claim of upstream Windows headless support.
+**Policy selection:** `--rl-policy` is required and replaceable with another valid canonical `TSKILL2` mask-v2 export path. The legacy `results/ppo_live_export.bin` is a 528-input, 18-movement policy and is incompatible with this runtime.
+
+**Verification:** the local GL33 log confirms checkpoint SHA `540ef892f52e8edd15a131e3c0f540e02db9f45a495cffa0aa9099b187068d21` and 5,461 in-game `RL decision` entries across 8 run records. Four decisions selected skills (3 Bomb, 1 Special), all accepted. This verifies policy loading and rendered control, not performance: the candidate recorded 0 wins in 16 development seeds and is not promoted. The local resource bundle still logs missing sound and postprocessing files; they did not prevent gameplay. The earlier direct `meson.exe` launcher exited silently, so this helper uses Meson's Python entry point and current runtime paths. These Windows builds remain local experiments, not upstream Windows headless support.
+
+**Convert and run the local challenger checkpoint (this workbench only):** Run this from the local `my_test` directory in Windows Command Prompt. It exports the skill-aware `.pt` checkpoint to a canonical v2 `TSKILL2` policy, then starts the existing GL33 demo. These checkpoint/build files are local-only and are absent from a fresh clone.
+
+```cmd
+py -3.9 .\scripts\export_live_skill_ppo_v2.py .\res\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\challenger_seed48020.pt .\res\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\challenger_seed48020_live_v2.bin && .\.venv-winbuild\Scripts\python.exe .\scripts\run_live_ppo_windows.py --renderer gl33 --rl-policy .\res\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\challenger_seed48020_live_v2.bin
+```
+
+The converter needs Python 3.9 with NumPy and PyTorch; `py -3.9` is the verified local interpreter. It replaces only the derived `.bin` export and leaves the source checkpoint unchanged. This 20,000-step Easy Stage 1 candidate is experimental and had 0/16 clears; this is not evidence of competent dodging or improved performance.
 
 ## 1. Install WSL2 Ubuntu (optional)
 
