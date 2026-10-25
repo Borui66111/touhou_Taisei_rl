@@ -1,0 +1,66 @@
+{
+  "experiment_id": "E1_SKILL_REWARD_20261025",
+  "kind": "real_native_game_paired_reward_ablation",
+  "status": "successful_execution_no_competence_claim_no_promotion",
+  "evidence": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40187753883",
+  "source_branch": "research/rsi-reward-e1-v1",
+  "code_commit": "1ab581f5ccff3f793fbe886d63b64c7e942af0a0",
+  "simulator": {
+    "repo": "touhourl/taisei-sim",
+    "commit": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "stage_id": 1,
+    "difficulty_id": 1,
+    "difficulty_name": "Easy",
+    "determinism_frames_verified": 600
+  },
+  "experiment": {
+    "training_seed": 48020,
+    "training_steps_per_arm": 20000,
+    "policy_type": "skill_PPO",
+    "skill_mask": "v2",
+    "evaluation_seed_start": 42110,
+    "evaluation_seed_end": 42125,
+    "evaluation_episodes_per_arm": 16,
+    "changed_factor": "reward-coefficient bundle"
+  },
+  "control": {
+    "checkpoint_sha256": "5cf7eb84b6a8c56825c25527162691179c057850963e38178d4dbe3fe51d995f",
+    "clears": 0,
+    "mean_deaths": 3,
+    "mean_alive_frames": 3454,
+    "mean_bombs_used": 9,
+    "mean_boss_damage": 3087.5
+  },
+  "challenger": {
+    "checkpoint_sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+    "clears": 0,
+    "mean_deaths": 3,
+    "mean_alive_frames": 4477,
+    "mean_bombs_used": 8.9375,
+    "mean_boss_damage": 24000
+  },
+  "paired_result": {
+    "mean_alive_frame_gain": 1023,
+    "bootstrap95pct_ci_conditional_on_one_training_seed": [
+      868.8125,
+      1151.9375
+    ],
+    "clear_gain": 0,
+    "death_gain": 0,
+    "mean_bombs_used_difference": -0.0625
+  },
+  "interpretation": "Improved time alive with skills at roughly equal Bomb consumption; not death-free clears, proven intelligent dodging or efficiency. Contrast: on 16 matched seeds, separate movement-only E1 showed survival-first reward regression; causal explanation remains open.",
+  "limitations": [
+    "One training seed and 16 evaluation seeds; uncertainty excludes between-training-seed variance.",
+    "Both fail all encounters with 3 mean deaths, nearly all Bombs consumed.",
+    "Existing mask v2 excludes early Power Surge discharge.",
+    "Item pickup event cause unavailable.",
+    "No automatic champion promotion; sealed final seeds 43000–43099 untouched."
+  ],
+  "artifact": {
+    "id": 12596786188,
+    "url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40187753883/artifacts/12596786188",
+    "retention_days": 30
+  },
+  "next": "Prioritize early threatened-state movement traces, zero-skills head-to-head comparisons and risk-aware observation/teacher baseline before broad reward/HPO sweep."
+}
