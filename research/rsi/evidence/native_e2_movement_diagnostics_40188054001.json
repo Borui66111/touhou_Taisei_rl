@@ -1,0 +1,353 @@
+{
+  "schema_version": "native_taisei_E2_movement_diagnostic",
+  "provenance": {
+    "run_id": 40188054001,
+    "run_url": "https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40188054001",
+    "code_sha": "b297b18b339e554e4559f8f341bf6b1921234f3b",
+    "simulator_sha": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "artifact_id": 12597077112,
+    "artifact_expires_at": "2026-11-08T11:18:56Z",
+    "frozen_E1_checkpoint_sha256": {
+      "baseline": "a2a0ce0d4716945b228641844f65620ed1548a4342f7f891539e98303c1eed7b",
+      "survival_first": "5526812cb58988849165389db39eec50add78d0dfc41840f5eba1ecc491b93b8"
+    }
+  },
+  "method": "Real native Taisei replay using frozen movement-only PPO checkpoints with trace_callback, original heuristic and development seeds 42100-42103. No training, no promotion.",
+  "status": "DESCRIPTIVE_NATIVE_TRAJECTORY_DIAGNOSTIC",
+  "policy_promoted": false,
+  "task": "Taisei Stage1 Easy development seeds 42100-42103",
+  "policy_reports": {
+    "baseline": {
+      "seed_reports": {
+        "42100": {
+          "recorded_actions": 1249,
+          "movement_action_changes_per_100_frames": 0,
+          "longest_identical_action_run": 1249,
+          "stay_action_fraction": 0,
+          "focused_fraction": 1,
+          "border_proximity_fraction": 0.7606,
+          "border_pushing_proxy_fraction": 0.6605,
+          "projectile_close_approach_proxy_fraction": 0.1633,
+          "action_changes_during_close_approach_proxy": 0,
+          "first_recorded_death_increment_frame": 339,
+          "top_action_choices": [
+            [
+              12,
+              1249
+            ]
+          ]
+        },
+        "42101": {
+          "recorded_actions": 1279,
+          "movement_action_changes_per_100_frames": 0,
+          "longest_identical_action_run": 1279,
+          "stay_action_fraction": 0,
+          "focused_fraction": 1,
+          "border_proximity_fraction": 0.7662,
+          "border_pushing_proxy_fraction": 0.6685,
+          "projectile_close_approach_proxy_fraction": 0.122,
+          "action_changes_during_close_approach_proxy": 0,
+          "first_recorded_death_increment_frame": 339,
+          "top_action_choices": [
+            [
+              12,
+              1279
+            ]
+          ]
+        },
+        "42102": {
+          "recorded_actions": 1245,
+          "movement_action_changes_per_100_frames": 0,
+          "longest_identical_action_run": 1245,
+          "stay_action_fraction": 0,
+          "focused_fraction": 1,
+          "border_proximity_fraction": 0.7598,
+          "border_pushing_proxy_fraction": 0.6594,
+          "projectile_close_approach_proxy_fraction": 0.1245,
+          "action_changes_during_close_approach_proxy": 0,
+          "first_recorded_death_increment_frame": 339,
+          "top_action_choices": [
+            [
+              12,
+              1245
+            ]
+          ]
+        },
+        "42103": {
+          "recorded_actions": 1227,
+          "movement_action_changes_per_100_frames": 0,
+          "longest_identical_action_run": 1227,
+          "stay_action_fraction": 0,
+          "focused_fraction": 1,
+          "border_proximity_fraction": 0.7563,
+          "border_pushing_proxy_fraction": 0.6544,
+          "projectile_close_approach_proxy_fraction": 0.1255,
+          "action_changes_during_close_approach_proxy": 0,
+          "first_recorded_death_increment_frame": 339,
+          "top_action_choices": [
+            [
+              12,
+              1227
+            ]
+          ]
+        }
+      },
+      "aggregate_mean": {
+        "movement_action_changes_per_100_frames": 0,
+        "focused_fraction": 1,
+        "border_proximity_fraction": 0.7607,
+        "border_pushing_proxy_fraction": 0.6607,
+        "projectile_close_approach_proxy_fraction": 0.1338
+      }
+    },
+    "survival_first": {
+      "seed_reports": {
+        "42100": {
+          "recorded_actions": 1135,
+          "movement_action_changes_per_100_frames": 0.97,
+          "longest_identical_action_run": 559,
+          "stay_action_fraction": 0,
+          "focused_fraction": 0,
+          "border_proximity_fraction": 0.8361,
+          "border_pushing_proxy_fraction": 0.726,
+          "projectile_close_approach_proxy_fraction": 0.1154,
+          "action_changes_during_close_approach_proxy": 1,
+          "first_recorded_death_increment_frame": 300,
+          "top_action_choices": [
+            [
+              5,
+              884
+            ],
+            [
+              3,
+              251
+            ]
+          ]
+        },
+        "42101": {
+          "recorded_actions": 1110,
+          "movement_action_changes_per_100_frames": 0.99,
+          "longest_identical_action_run": 534,
+          "stay_action_fraction": 0,
+          "focused_fraction": 0,
+          "border_proximity_fraction": 0.8324,
+          "border_pushing_proxy_fraction": 0.7198,
+          "projectile_close_approach_proxy_fraction": 0.1595,
+          "action_changes_during_close_approach_proxy": 1,
+          "first_recorded_death_increment_frame": 300,
+          "top_action_choices": [
+            [
+              5,
+              859
+            ],
+            [
+              3,
+              251
+            ]
+          ]
+        },
+        "42102": {
+          "recorded_actions": 1118,
+          "movement_action_changes_per_100_frames": 0.98,
+          "longest_identical_action_run": 542,
+          "stay_action_fraction": 0,
+          "focused_fraction": 0,
+          "border_proximity_fraction": 0.8336,
+          "border_pushing_proxy_fraction": 0.7218,
+          "projectile_close_approach_proxy_fraction": 0.1521,
+          "action_changes_during_close_approach_proxy": 1,
+          "first_recorded_death_increment_frame": 300,
+          "top_action_choices": [
+            [
+              5,
+              867
+            ],
+            [
+              3,
+              251
+            ]
+          ]
+        },
+        "42103": {
+          "recorded_actions": 1111,
+          "movement_action_changes_per_100_frames": 0.99,
+          "longest_identical_action_run": 535,
+          "stay_action_fraction": 0,
+          "focused_fraction": 0,
+          "border_proximity_fraction": 0.8326,
+          "border_pushing_proxy_fraction": 0.7201,
+          "projectile_close_approach_proxy_fraction": 0.1638,
+          "action_changes_during_close_approach_proxy": 1,
+          "first_recorded_death_increment_frame": 300,
+          "top_action_choices": [
+            [
+              5,
+              860
+            ],
+            [
+              3,
+              251
+            ]
+          ]
+        }
+      },
+      "aggregate_mean": {
+        "movement_action_changes_per_100_frames": 0.9825,
+        "focused_fraction": 0,
+        "border_proximity_fraction": 0.8337,
+        "border_pushing_proxy_fraction": 0.7219,
+        "projectile_close_approach_proxy_fraction": 0.1477
+      }
+    },
+    "heuristic": {
+      "seed_reports": {
+        "42100": {
+          "recorded_actions": 1601,
+          "movement_action_changes_per_100_frames": 6.25,
+          "longest_identical_action_run": 351,
+          "stay_action_fraction": 0.4947,
+          "focused_fraction": 0.128,
+          "border_proximity_fraction": 0.4541,
+          "border_pushing_proxy_fraction": 0.3323,
+          "projectile_close_approach_proxy_fraction": 0.178,
+          "action_changes_during_close_approach_proxy": 12,
+          "first_recorded_death_increment_frame": 705,
+          "top_action_choices": [
+            [
+              0,
+              792
+            ],
+            [
+              2,
+              490
+            ],
+            [
+              1,
+              109
+            ],
+            [
+              10,
+              94
+            ],
+            [
+              11,
+              68
+            ]
+          ]
+        },
+        "42101": {
+          "recorded_actions": 1635,
+          "movement_action_changes_per_100_frames": 6.24,
+          "longest_identical_action_run": 351,
+          "stay_action_fraction": 0.5431,
+          "focused_fraction": 0.1223,
+          "border_proximity_fraction": 0.3829,
+          "border_pushing_proxy_fraction": 0.2734,
+          "projectile_close_approach_proxy_fraction": 0.1358,
+          "action_changes_during_close_approach_proxy": 9,
+          "first_recorded_death_increment_frame": 705,
+          "top_action_choices": [
+            [
+              0,
+              888
+            ],
+            [
+              2,
+              428
+            ],
+            [
+              1,
+              109
+            ],
+            [
+              10,
+              81
+            ],
+            [
+              11,
+              41
+            ]
+          ]
+        },
+        "42102": {
+          "recorded_actions": 2192,
+          "movement_action_changes_per_100_frames": 8.85,
+          "longest_identical_action_run": 351,
+          "stay_action_fraction": 0.3627,
+          "focused_fraction": 0.1907,
+          "border_proximity_fraction": 0.5922,
+          "border_pushing_proxy_fraction": 0.4649,
+          "projectile_close_approach_proxy_fraction": 0.198,
+          "action_changes_during_close_approach_proxy": 19,
+          "first_recorded_death_increment_frame": 705,
+          "top_action_choices": [
+            [
+              2,
+              852
+            ],
+            [
+              0,
+              795
+            ],
+            [
+              11,
+              140
+            ],
+            [
+              10,
+              115
+            ],
+            [
+              1,
+              110
+            ]
+          ]
+        },
+        "42103": {
+          "recorded_actions": 1895,
+          "movement_action_changes_per_100_frames": 7.23,
+          "longest_identical_action_run": 351,
+          "stay_action_fraction": 0.4602,
+          "focused_fraction": 0.1404,
+          "border_proximity_fraction": 0.505,
+          "border_pushing_proxy_fraction": 0.362,
+          "projectile_close_approach_proxy_fraction": 0.1615,
+          "action_changes_during_close_approach_proxy": 11,
+          "first_recorded_death_increment_frame": 705,
+          "top_action_choices": [
+            [
+              0,
+              872
+            ],
+            [
+              2,
+              631
+            ],
+            [
+              10,
+              114
+            ],
+            [
+              1,
+              109
+            ],
+            [
+              11,
+              60
+            ]
+          ]
+        }
+      },
+      "aggregate_mean": {
+        "movement_action_changes_per_100_frames": 7.1425,
+        "focused_fraction": 0.1454,
+        "border_proximity_fraction": 0.4835,
+        "border_pushing_proxy_fraction": 0.3581,
+        "projectile_close_approach_proxy_fraction": 0.1683
+      }
+    }
+  },
+  "limitations": "Proxy risk uses closest linear bullet approach <= 20 pixels, not actual collision/hitbox; border metrics are coordinate thresholds, not verified wall contact; first recorded death-increment frame need not equal first hit; observations follow policies' different trajectories. No inference of successful dodging or causal superiority from these proxies.",
+  "scientific_interpretation": "Control PPO picks focused LEFT action 12 every frame; survival-first chooses mainly unfocused up-left index 5 and left index3 and changes direction rarely; both spend >75% frames near a wall and often command motion further toward it. Heuristic repositions more and first recorded death increment later. This directly documents near-constant action selection and border-pinning proxies, not proof of causes or exact collision risk.",
+  "next_research_action": "Diagnose actor logits versus observation changes; compare teacher policy movement and threat encoding; design threat-aware teacher distillation or collision-predictive observation as next bounded L2 experiment."
+}
