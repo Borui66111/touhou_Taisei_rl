@@ -27,14 +27,14 @@ LIB="$(find "$ROOT/build" -type f -name 'libtaisei_sim.so*' | head -n1)"
 test -n "$LIB" || { echo "BLOCKED: native simulator library missing" >&2; exit 1; }
 printf 'native_library=%s\n' "$LIB" >> "$OUT/manifest.txt"
 
-meson devenv -C "$ROOT/build" python scripts/smoke_native.py \
+meson devenv -C "$ROOT/build" python "$PWD/scripts/smoke_native.py" \
   --library "$LIB" --resource-path "$ROOT/resources" \
   --stage 1 --difficulty "$EASY_DIFFICULTY" --seed 42000 --frames 300 \
   2>&1 | tee "$OUT/native_smoke.log"
 
 # Bounded pipeline verification: a fresh SKILL policy, NOT RSI proof.
 # Do not use sealed 43000-43099 evaluation seeds anywhere.
-meson devenv -C "$ROOT/build" python scripts/train_torch_ppo.py \
+meson devenv -C "$ROOT/build" python "$PWD/scripts/train_torch_ppo.py" \
   --library "$LIB" --resource-path "$ROOT/resources" \
   --stage 1 --difficulty "$EASY_DIFFICULTY" --policy-type skill \
   --skill-action-mask --seed 48010 --steps 1024 --rollout-steps 256 \
@@ -43,13 +43,13 @@ meson devenv -C "$ROOT/build" python scripts/train_torch_ppo.py \
 
 # Same fixed initial game seeds for baseline and pilot.
 for policy in heuristic random; do
-  meson devenv -C "$ROOT/build" python scripts/evaluate_native.py \
+  meson devenv -C "$ROOT/build" python "$PWD/scripts/evaluate_native.py" \
     --library "$LIB" --resource-path "$ROOT/resources" \
     --stage 1 --difficulty "$EASY_DIFFICULTY" --policy "$policy" \
     --episodes 4 --seed 42100 --out "$OUT/${policy}.jsonl" \
     2>&1 | tee "$OUT/${policy}.stdout.log"
 done
-meson devenv -C "$ROOT/build" python scripts/evaluate_native.py \
+meson devenv -C "$ROOT/build" python "$PWD/scripts/evaluate_native.py" \
   --library "$LIB" --resource-path "$ROOT/resources" \
   --stage 1 --difficulty "$EASY_DIFFICULTY" --policy ppo --model "$OUT/pilot_skill.pt" \
   --episodes 4 --seed 42100 --out "$OUT/pilot_skill_evaluation.jsonl" \
