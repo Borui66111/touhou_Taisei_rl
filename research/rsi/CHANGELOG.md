@@ -65,3 +65,13 @@
 **Verification:** E2 authentic-game run 40213025937 succeeded. E3 has been written and awaits its own source preflight and actual Taisei execution. No E3 learned-policy results, native clears, or champion promotion are claimed yet.
 
 **Next:** Run E3 with bounded CI, validate training/evaluation artifacts, inspect learned movement behavior and register a controlled E4 improvement only if justified by evidence.
+
+## 2026-10-26 — E3 BC succeeded, native PPO startup segfault (run 40214399926)
+
+**Observed:** The E3 job completed native build, 300-frame smoke, 600-frame deterministic replay, 12,000 genuine teacher demonstration decisions, and 16 BC epochs. Archived artifact 12606603775 contains the 12k-decision dataset and hashed BC checkpoint (SHA256 `cd544b64ee1381e6e2bd8ee46279ea1d42b41399f5028c8a3452642c80230547`); random-frame BC holdout accuracy was 83.92%. This metric is not native gameplay competence. The job then segfaulted with exit 139 at the PPO startup boundary; no PPO checkpoint or matched-seed neural evaluation was produced.
+
+**Diagnosis (hypothesis, not proven):** E3 originally created and destroyed a native Taisei environment during demonstration collection, then initialized a second native Taisei environment in the same Python process during PPO. The native library's global lifecycle may not support that reinitialization. No native C backtrace is available.
+
+**Non-training fix:** Commits `610da318` (Python faulthandler and native teacher progress/reset events), `7d567717` (PPO via a fresh subprocess using the existing native PPO CLI), and `2288091f` (source command-contract test). Logged event `T-20261025-28`. The experiment's 12k+8k native interaction budget and seed partitions are unchanged. These changes have not yet passed a native rerun; no additional CI job was requested.
+
+**Next:** Run updated source preflight; after explicit approval for another bounded native run, inspect whether the fresh PPO process resolves the crash, then evaluate BC-only and BC→PPO over the 16 development game seeds. No champion promotion or sealed-seed access.
