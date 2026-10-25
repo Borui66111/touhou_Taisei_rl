@@ -11,7 +11,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: taisei-rsi-pilot
+  group: taisei-native-serial
   cancel-in-progress: false
 
 jobs:
