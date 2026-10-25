@@ -53,3 +53,15 @@
 **Fix:** Commit `a17bf744f49523ab25448f4c6edb3aed72ad6bfe` changes the pilot group to `taisei-native-serial`, matching the E2 teacher workflow. This protects **future** workflow runs; it does not retroactively change the concurrency group of the already-running pilot.
 
 **Next gate:** Recheck `40212525844` completion and artifacts; do not submit an E2 run request while the older pilot remains active. No new native run was dispatched, no checkpoint promoted, and sealed final seeds remain excluded.
+
+## 2026-10-26 — E2 positive native controller result and E3 imitation-learning pipeline
+
+**Issue:** The prior PPO policies mostly push toward a boundary and fail to clear Stage1 Easy; reward ablations alone did not fix navigation. Even a higher-performing scripted controller would not establish a *learned RL policy* improvement.
+
+**Reason:** The existing 528-feature MLP actor lacks an explicit predictive-risk decision rule. Before changing the architecture, it is worth testing whether a learned actor can imitate a source-verified, much stronger handcrafted movement controller.
+
+**Fix:** E2 passed full native build/smoke/determinism and 16 paired evaluations, gaining +5,938.3125 mean alive frames with zero skill uses, but still 0 clears and 2 truncations. Implemented E3 native training pipeline with exactly 12k teacher demonstration decisions and 8k PPO fine-tuning decisions, source budget guards, dataset/model hashes, matched 16-seed evaluations, fail-closed no-skill checks and explicit launch trigger. Original model remains intact.
+
+**Verification:** E2 authentic-game run 40213025937 succeeded. E3 has been written and awaits its own source preflight and actual Taisei execution. No E3 learned-policy results, native clears, or champion promotion are claimed yet.
+
+**Next:** Run E3 with bounded CI, validate training/evaluation artifacts, inspect learned movement behavior and register a controlled E4 improvement only if justified by evidence.
