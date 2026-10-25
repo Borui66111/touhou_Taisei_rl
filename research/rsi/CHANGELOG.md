@@ -41,3 +41,19 @@
 **Fix:** Added `RESEARCH_OS.md` with L0-L4 recursion, bounded default-continuation, marginal-gain evaluation and human gates. Seeded and corrected 11 evidence-labeled trajectory events, appended retroactive context without treating it as reexecuted data; implemented stdlib ledger validator, 10 regression tests, immutable byte-prefix CI, and machine-readable research digest. Enabled daily safe continuation separately from an existing hourly status watcher. Persisted a compact cross-project synthesis to the UKS.
 
 **Verification:** CI run 40126793965 passed the initial 9-event/10-test trajectory audit. Newly appended 2 events and this changelog update must be checked by follow-up CI; native training still unverified due to SDL3 build failure.
+
+## 2026-10-25 — Native build complete; two post-build command errors repaired
+
+**Issue:** Easy native pilot 40128137506 passed all 618 Taisei build tasks but stopped before executing gameplay; the next attempt 40185187240 also stopped before smoke.
+
+**Reason:** First `meson devenv` interpreted `--` as executable name; after removing the token Meson executed in the build directory, where relative `scripts/*.py` was absent.
+
+**Fix:** On isolated `research/rsi-easy-curriculum-fix`, remove the stray separator, replace all four runtime script paths with absolute `$PWD/scripts/...` paths expanded by the shell, and add a source-level preflight assertion. Pending native integration verdict from GitHub run 40185526694. No PPO architecture, code semantics, or champion touched.
+
+## 2026-10-25 — Power Surge early-discharge action-mask candidate
+
+**Issue:** Published v2 action mask disallowed SPECIAL whenever Surge was already active, despite Taisei supporting deliberate early discharge.
+
+**Reason:** It models SPECIAL only as activation, omitting its discharge transition.
+
+**Fix:** Added separate mask v3 `taisei_skill_mask_v3_discharge` that permits SPECIAL while alive and surged (excluding Bomb-active state), retained an explicit historical v2 function and checkpoint-driven inference branch. Eleven numerical / checkpoint tests passed in GitHub Actions run 40185726369. Native effectiveness remains unproven; candidate is not merged into the active training path.
