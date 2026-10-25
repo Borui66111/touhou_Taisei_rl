@@ -1,0 +1,54 @@
+name: E2 native risk-aware movement teacher (manual gated experiment)
+
+on:
+  push:
+    branches: [research/rsi-automation-v1]
+    paths:
+      - "research/rsi/E2_TEACHER_RUN_REQUEST.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: taisei-native-serial
+  cancel-in-progress: false
+
+jobs:
+  native-e2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Source-only preregistered teacher checks
+        run: |
+          python -m unittest discover -s research/rsi -p 'test_risk_aware_teacher.py' -v
+          python -m unittest discover -s research/rsi -p 'test_e2_teacher_compare.py' -v
+      - name: Install actual Taisei native build and evaluation requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config gettext \
+            libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev libpng-dev libssl-dev \
+            libopusfile-dev libunibreak-dev libgl1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxrender-dev libxkbcommon-dev libwayland-dev \
+            wayland-protocols
+          for p in libcglm-dev libsdl3-dev; do
+            if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
+          done
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'backports.zstd' torch
+          python -c 'from backports.zstd import ZstdCompressor, ZstdDecompressor; print("Taisei pack.py Zstandard import OK")'
+      - name: Build, smoke, deterministic replay, and paired native teacher comparison
+        working-directory: my_test
+        run: bash ../research/rsi/run_e2_teacher.sh
+      - name: Upload real-game evidence (also when failure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taisei-e2-teacher-${{ github.run_id }}
+          path: my_test/results/rsi_e2_teacher_v1/
+          if-no-files-found: warn
+          retention-days: 21
