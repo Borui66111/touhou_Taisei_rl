@@ -31,3 +31,11 @@
 **Fix:** On the disposable GitHub Actions runner, independently build tagged `taisei-project/SDL` as a shared library; expose pkg-config and loader paths so unchanged pinned Taisei resolves a compatible shared SDL3 dependency. Avoid rewriting upstream gameplay sources.
 
 **Validation:** Await run 40122713708; no native training success is claimed yet.
+
+## 2026-10-25 — E1 movement-only native reward ablation initiated
+
+**Issue:** Native same-checkpoint 4-seed skill ablation showed PPO survival collapses from 3455 to 792.25 mean alive frames when Bomb/Surge are forcibly disabled; thus the current skill PPO's apparent advantage is mainly associated with resource use, not verified dodging.
+
+**Reason:** Existing full-game PPO controls both movement and consumables, while per-alive-frame reward is +1 and death costs -10. No controlled movement-only reward study yet distinguishes flawed reward incentives from deficient observations or learning method.
+
+**Fix:** Created `e1_train_movement.py` with two 20k interaction movement-only PPO reward arms, `e1_summarize.py` with matched 16-seed descriptive evaluation, `run_e1_movement.sh` with real Taisei build/smoke/determinism gate, and `test_e1_plan.py` with no-skill, task, budget and sealed-seed safety assertions. No auto promotion and no fabricated native results. Revisit hypotheses after CI evidence appears.
