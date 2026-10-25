@@ -65,7 +65,7 @@ def risk_aware_action(obs, horizon=18):
     not a learned or provably safe shield. This version is fixed before native
     E2 evaluation; do not tune against the final sealed seeds.
     """
-    if not isinstance(horizon, int) or not 1 <= horizon <= 60:
+    if isinstance(horizon, bool) or not isinstance(horizon, int) or not 1 <= horizon <= 60:
         raise ValueError("Horizon must be an integer in 1..60")
     p = obs["player"]
     px, py = float(p[0]) * WIDTH, float(p[1]) * HEIGHT
