@@ -1,0 +1,70 @@
+name: E5 native Taisei checkpoint replay validation
+
+# Canonical branch and explicit opt-in request only.
+on:
+  push:
+    branches: [research/rsi-automation-v1]
+    paths:
+      - "research/rsi/E5_REPLAY_RUN_REQUEST.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: taisei-native-serial
+  cancel-in-progress: false
+
+jobs:
+  e5-native-replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Recover immutable E3 native data and original BC
+        uses: actions/download-artifact@v4
+        with:
+          name: taisei-e3-distillation-40219788151
+          run-id: 40219788151
+          github-token: ${{ github.token }}
+          repository: Borui66111/touhou_Taisei_rl
+          path: my_test/results/e3_artifact
+      - name: Recover immutable E4 native checkpoints, episode data and native smoke evidence
+        uses: actions/download-artifact@v4
+        with:
+          name: taisei-e4-rebalanced-bc-40220975924
+          run-id: 40220975924
+          github-token: ${{ github.token }}
+          repository: Borui66111/touhou_Taisei_rl
+          path: my_test/results/e4_artifact
+      - name: Install native Taisei and audit dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config gettext \
+            libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev libpng-dev libssl-dev \
+            libopusfile-dev libunibreak-dev libgl1-mesa-dev libegl1-mesa-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxi-dev \
+            libxfixes-dev libxss-dev libxtst-dev libxrender-dev libxkbcommon-dev libwayland-dev \
+            wayland-protocols
+          for p in libcglm-dev libsdl3-dev; do
+            if apt-cache show "$p" >/dev/null 2>&1; then sudo apt-get install -y "$p"; fi
+          done
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'backports.zstd' torch
+          python -c 'from backports.zstd import ZstdCompressor,ZstdDecompressor; print("Native packer ready")'
+      - name: Fail-closed replay regression tests
+        run: python -m unittest discover -s research/rsi -p 'test_e5_audit_replay.py' -v
+      - name: Re-audit, build native and replay each checkpoint twice
+        working-directory: my_test
+        run: bash ../research/rsi/run_e5_native_replay.sh
+      - name: Preserve native traces including failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taisei-e5-native-replay-${{ github.run_id }}
+          path: my_test/results/rsi_e5_native_replay_v1/
+          if-no-files-found: warn
+          retention-days: 21
