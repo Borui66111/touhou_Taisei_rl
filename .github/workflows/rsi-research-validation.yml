@@ -8,6 +8,8 @@ on:
       - "research/rsi/preflight_native_upstream.py"
       - "research/rsi/test_preflight_native_upstream.py"
       - "research/rsi/test_native_workflow_preflight.py"
+      - "research/rsi/verify_pinned_local_checkout.py"
+      - "research/rsi/test_verify_pinned_local_checkout.py"
       - ".github/workflows/rsi-e2-teacher.yml"
       - ".github/workflows/rsi-e3-distill.yml"
       - ".github/workflows/rsi-e4-bc.yml"
@@ -57,6 +59,7 @@ jobs:
           python -m unittest discover -s research/rsi/trajectory -p 'test_*.py' -v
           python -m unittest discover -s research/rsi -p 'test_preflight_native_upstream.py' -v
           python -m unittest discover -s research/rsi -p 'test_native_workflow_preflight.py' -v
+          python -m unittest discover -s research/rsi -p 'test_verify_pinned_local_checkout.py' -v
           python -m unittest discover -s research/rsi -p 'test_e5_audit_replay.py' -v
           python -m unittest discover -s research/rsi -p 'test_policy_format_preflight.py' -v
           python -m unittest discover -s research/rsi -p 'test_competence_eval.py' -v
