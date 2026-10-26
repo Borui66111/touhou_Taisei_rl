@@ -11,7 +11,6 @@ import hashlib
 import json
 from pathlib import Path
 from statistics import mean
-import numpy as np
 
 DATA_SHA="02dd11feb60e0dcb5710ae8af3cf33dca7e7e77756d6467f822ad94d0f5a0d8d"
 BC_SHA="87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54"
@@ -59,6 +58,7 @@ def max_run(seq):
     return best
 
 def audit(e3,e4):
+    import numpy as np  # Only archived tensor audit needs NumPy; replay validator is stdlib-only.
     e3=Path(e3);e4=Path(e4)
     for path,expected in [(e3/"teacher_demonstrations_12000.npz",DATA_SHA),
                           (e3/"teacher_bc_seed48030.pt",BC_SHA),
@@ -127,23 +127,79 @@ def audit(e3,e4):
                            "Engine determinism is not learned-checkpoint replay"]}
 
 def validate_replay(first_summary,second_summary,first_trace,second_trace,seeds=REPLAY_SEEDS):
+    """Fail closed unless *every* native decision and terminal state is covered.
+
+    E5 runs deterministic legacy movement inference with frames_per_action=1.
+    Comparing two identical but incomplete traces is NOT proof of replay.
+    """
     first=episodes(first_summary,seeds);second=episodes(second_summary,seeds)
     trace_a=jsonl(first_trace);trace_b=jsonl(second_trace)
-    if len(trace_a)!=len(trace_b):raise ValueError("Native replay trace length mismatch")
+    if len(trace_a)!=len(trace_b):
+        raise ValueError("Native replay trace length mismatch")
     counts={s:0 for s in seeds}
+    alive_counts={s:0 for s in seeds}
+    last_post={}
+    episode_cursor=0
     for i,(a,b) in enumerate(zip(trace_a,trace_b)):
-        if a!=b:raise ValueError(f"Native policy action/state replay mismatch at index {i}")
-        s=int(a["seed"])
-        if s not in counts or int(a["action_index"])!=counts[s]:
+        if a!=b:
+            raise ValueError(f"Native policy action/state replay mismatch at index {i}")
+        if not isinstance(a,dict):
+            raise ValueError("Native replay trace row must be an object")
+        s=a.get("seed")
+        if type(s) is not int or s not in counts:
+            raise ValueError("Unexpected native replay seed")
+        if episode_cursor>=len(seeds) or s!=seeds[episode_cursor]:
+            raise ValueError("Native replay seed order or episode coverage mismatch")
+        if type(a.get("episode_index")) is not int or a["episode_index"]!=episode_cursor:
+            raise ValueError("Native replay episode index mismatch")
+        if type(a.get("action_index")) is not int or a["action_index"]!=counts[s]:
             raise ValueError("Replay seed or action index discontinuity")
-        if not isinstance(a.get("movement_action"),int) or not 0<=a["movement_action"]<18:
+        move=a.get("movement_action")
+        argmax=a.get("movement_argmax")
+        if type(move) is not int or not 0<=move<18:
             raise ValueError("Invalid replay policy action")
-        if any(k not in a for k in ("pre","post","movement_argmax")):
+        if type(argmax) is not int or move!=argmax:
+            raise ValueError("Deterministic E5 movement action differs from argmax")
+        if a.get("skill_action") is not None:
+            raise ValueError("E5 legacy no-skill replay unexpectedly used skill action")
+        pre=a.get("pre");post=a.get("post")
+        if not isinstance(pre,dict) or not isinstance(post,dict):
             raise ValueError("Native synchronized trace evidence missing")
+        for state in (pre,post):
+            if (type(state.get("logical_frame")) is not int
+                    or type(state.get("alive")) is not bool
+                    or type(state.get("deaths")) is not int
+                    or state["deaths"]<0):
+                raise ValueError("Missing or invalid native state fields")
+        if post["logical_frame"]!=pre["logical_frame"]+1:
+            raise ValueError("Native one-frame logical progression mismatch")
+        if s in last_post:
+            prior=last_post[s]
+            if (pre["logical_frame"]!=prior["logical_frame"]
+                    or pre["alive"]!=prior["alive"]
+                    or pre["deaths"]!=prior["deaths"]):
+                raise ValueError("Native pre/post state continuity mismatch")
+        if post["deaths"]<pre["deaths"]:
+            raise ValueError("Native death counter regressed")
         counts[s]+=1
-    if any(v==0 for v in counts.values()):raise ValueError("Missing native replay seed")
-    for a,b in zip(first,second):
-        if a!=b:raise ValueError("Native terminal replay mismatch at seed "+str(a["seed"]))
+        alive_counts[s]+=int(post["alive"])
+        last_post[s]=post
+        if counts[s]>first[episode_cursor]["frames"]:
+            raise ValueError("Native replay trace exceeds terminal frame count")
+        if counts[s]==first[episode_cursor]["frames"]:
+            episode_cursor+=1
+    for j,s in enumerate(seeds):
+        if (counts[s]!=first[j]["frames"]
+                or counts[s]!=second[j]["frames"]):
+            raise ValueError("Native replay trace coverage differs from terminal frames")
+        if (last_post.get(s,{}).get("logical_frame")!=first[j]["logical_frame"]
+                or last_post[s]["logical_frame"]!=second[j]["logical_frame"]):
+            raise ValueError("Native replay terminal logical frame mismatch")
+        if (alive_counts[s]!=first[j]["alive_frames"]
+                or alive_counts[s]!=second[j]["alive_frames"]):
+            raise ValueError("Native replay alive-frame count mismatch")
+        if first[j]!=second[j]:
+            raise ValueError("Native terminal replay mismatch at seed "+str(s))
     return {"status":"pass_native_policy_replay_two_independent_processes",
             "seeds":seeds,"identical_actions_and_native_states":sum(counts.values()),
             "frames_per_seed":counts,"identical_terminal_digest":True,
