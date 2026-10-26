@@ -1,0 +1,85 @@
+{
+  "experiment": "E3_NATIVE_TEACHER_DISTILL_V1",
+  "native_interactions_max": 20000,
+  "demonstrations": 12000,
+  "ppo_decisions": 8000,
+  "demo_seed": 48030,
+  "ppo_seed": 48020,
+  "stage_id": 1,
+  "difficulty_id": 1,
+  "action_space": "legacy 18 movement actions; no Bomb/Special",
+  "model_input_dim": 528,
+  "replay_final_seeds": "43000-43099 sealed",
+  "hypothesis": "BC initialization from an effective native risk-aware teacher improves the resulting PPO policy's actual survival without consumable spamming",
+  "limitations": "One teacher dataset, one training initialization, 16 development game seeds; no generalization or auto promotion",
+  "code_sha": "880d43197301c97c2675a57370c1a9ae1728e569",
+  "status": "executing_native"
+}
+{"event": "native_teacher_progress", "step": 0, "episodes_finished": 0, "logical_frame": 1}
+{"event": "native_teacher_progress", "step": 250, "episodes_finished": 0, "logical_frame": 251}
+{"event": "native_teacher_progress", "step": 500, "episodes_finished": 0, "logical_frame": 501}
+{"event": "native_teacher_progress", "step": 750, "episodes_finished": 0, "logical_frame": 751}
+{"event": "native_teacher_progress", "step": 1000, "episodes_finished": 0, "logical_frame": 1001}
+{"event": "native_teacher_progress", "step": 1250, "episodes_finished": 0, "logical_frame": 1251}
+{"event": "native_teacher_progress", "step": 1500, "episodes_finished": 0, "logical_frame": 1501}
+{"event": "native_teacher_progress", "step": 1750, "episodes_finished": 0, "logical_frame": 1751}
+{"event": "native_teacher_progress", "step": 2000, "episodes_finished": 0, "logical_frame": 2001}
+{"event": "native_teacher_progress", "step": 2250, "episodes_finished": 0, "logical_frame": 2251}
+{"event": "native_teacher_progress", "step": 2500, "episodes_finished": 0, "logical_frame": 2501}
+{"event": "native_teacher_progress", "step": 2750, "episodes_finished": 0, "logical_frame": 2751}
+{"event": "native_teacher_progress", "step": 3000, "episodes_finished": 0, "logical_frame": 3001}
+{"event": "native_teacher_progress", "step": 3250, "episodes_finished": 0, "logical_frame": 3251}
+{"event": "native_teacher_progress", "step": 3500, "episodes_finished": 0, "logical_frame": 3501}
+{"event": "native_teacher_progress", "step": 3750, "episodes_finished": 0, "logical_frame": 3751}
+{"event": "native_teacher_progress", "step": 4000, "episodes_finished": 0, "logical_frame": 4001}
+{"event": "native_teacher_progress", "step": 4250, "episodes_finished": 0, "logical_frame": 4251}
+{"event": "native_teacher_progress", "step": 4500, "episodes_finished": 0, "logical_frame": 4501}
+{"event": "native_teacher_progress", "step": 4750, "episodes_finished": 0, "logical_frame": 4751}
+{"event": "native_teacher_progress", "step": 5000, "episodes_finished": 0, "logical_frame": 5001}
+{"event": "native_teacher_progress", "step": 5250, "episodes_finished": 0, "logical_frame": 5251}
+{"event": "native_teacher_progress", "step": 5500, "episodes_finished": 0, "logical_frame": 5501}
+{"event": "native_teacher_progress", "step": 5750, "episodes_finished": 0, "logical_frame": 5751}
+{"event": "native_teacher_progress", "step": 6000, "episodes_finished": 0, "logical_frame": 6001}
+{"event": "native_teacher_progress", "step": 6250, "episodes_finished": 0, "logical_frame": 6251}
+{"event": "native_teacher_progress", "step": 6500, "episodes_finished": 0, "logical_frame": 6501}
+{"event": "native_teacher_progress", "step": 6750, "episodes_finished": 0, "logical_frame": 6751}
+{"event": "native_teacher_progress", "step": 7000, "episodes_finished": 0, "logical_frame": 7001}
+{"event": "native_teacher_progress", "step": 7250, "episodes_finished": 0, "logical_frame": 7251}
+{"event": "native_teacher_progress", "step": 7500, "episodes_finished": 0, "logical_frame": 7501}
+{"event": "native_teacher_progress", "step": 7750, "episodes_finished": 0, "logical_frame": 7751}
+{"event": "native_teacher_reset_begin", "step": 7857, "episode_count": 1, "next_seed": 48031, "terminated": true, "truncated": false}
+{"event": "native_teacher_reset_complete", "step": 7857, "episode_count": 1, "logical_frame": 1}
+{"event": "native_teacher_progress", "step": 8000, "episodes_finished": 1, "logical_frame": 144}
+{"event": "native_teacher_progress", "step": 8250, "episodes_finished": 1, "logical_frame": 394}
+{"event": "native_teacher_progress", "step": 8500, "episodes_finished": 1, "logical_frame": 644}
+{"event": "native_teacher_progress", "step": 8750, "episodes_finished": 1, "logical_frame": 894}
+{"event": "native_teacher_progress", "step": 9000, "episodes_finished": 1, "logical_frame": 1144}
+{"event": "native_teacher_progress", "step": 9250, "episodes_finished": 1, "logical_frame": 1394}
+{"event": "native_teacher_progress", "step": 9500, "episodes_finished": 1, "logical_frame": 1644}
+{"event": "native_teacher_progress", "step": 9750, "episodes_finished": 1, "logical_frame": 1894}
+{"event": "native_teacher_progress", "step": 10000, "episodes_finished": 1, "logical_frame": 2144}
+{"event": "native_teacher_progress", "step": 10250, "episodes_finished": 1, "logical_frame": 2394}
+{"event": "native_teacher_progress", "step": 10500, "episodes_finished": 1, "logical_frame": 2644}
+{"event": "native_teacher_progress", "step": 10750, "episodes_finished": 1, "logical_frame": 2894}
+{"event": "native_teacher_progress", "step": 11000, "episodes_finished": 1, "logical_frame": 3144}
+{"event": "native_teacher_progress", "step": 11250, "episodes_finished": 1, "logical_frame": 3394}
+{"event": "native_teacher_progress", "step": 11500, "episodes_finished": 1, "logical_frame": 3644}
+{"event": "native_teacher_progress", "step": 11750, "episodes_finished": 1, "logical_frame": 3894}
+{"event": "e3_phase_boundary", "phase": "ppo_fresh_process", "bc_checkpoint_sha256": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54"}
+{"updates": 1, "steps": 512, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 5, "policy_loss": -0.02021357271587476, "value_loss": 283.08424711227417, "entropy": 0.35305654583498836}
+{"updates": 2, "steps": 1024, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 16, "policy_loss": 0.04246172896819189, "value_loss": 258.50157499313354, "entropy": 0.7295057997107506}
+{"updates": 3, "steps": 1536, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 77, "policy_loss": 0.006024309957865626, "value_loss": 263.81458139419556, "entropy": 1.1052960697561502}
+{"updates": 4, "steps": 2048, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 136, "policy_loss": -0.0065801409073174, "value_loss": 267.70979404449463, "entropy": 1.3077195771038532}
+{"updates": 5, "steps": 2560, "episodes": 0, "wins": 0, "deaths": 1, "grazes": 147, "policy_loss": 0.0003515468561090529, "value_loss": 215.21849966049194, "entropy": 1.0151327438652515}
+{"updates": 6, "steps": 3072, "episodes": 0, "wins": 0, "deaths": 2, "grazes": 178, "policy_loss": 0.06886791123542935, "value_loss": 201.56613874435425, "entropy": 1.1168556809425354}
+{"updates": 7, "steps": 3584, "episodes": 1, "wins": 0, "deaths": 3, "grazes": 199, "policy_loss": -0.004453801142517477, "value_loss": 233.09724760055542, "entropy": 1.4075705744326115}
+{"updates": 8, "steps": 4096, "episodes": 1, "wins": 0, "deaths": 4, "grazes": 201, "policy_loss": -0.004994956543669105, "value_loss": 209.44981384277344, "entropy": 1.5160812847316265}
+{"updates": 9, "steps": 4608, "episodes": 1, "wins": 0, "deaths": 4, "grazes": 229, "policy_loss": -0.0059967514825984836, "value_loss": 254.4737195968628, "entropy": 1.6617762260138988}
+{"updates": 10, "steps": 5120, "episodes": 1, "wins": 0, "deaths": 5, "grazes": 247, "policy_loss": -0.00734789008856751, "value_loss": 203.86982679367065, "entropy": 1.766177199780941}
+{"updates": 11, "steps": 5632, "episodes": 2, "wins": 0, "deaths": 6, "grazes": 261, "policy_loss": -0.008013412560103461, "value_loss": 214.27726125717163, "entropy": 1.7410866394639015}
+{"updates": 12, "steps": 6144, "episodes": 2, "wins": 0, "deaths": 8, "grazes": 269, "policy_loss": -0.005344323464669287, "value_loss": 192.7767515182495, "entropy": 1.8256983794271946}
+{"updates": 13, "steps": 6656, "episodes": 2, "wins": 0, "deaths": 8, "grazes": 292, "policy_loss": -0.009932078799465671, "value_loss": 233.23427963256836, "entropy": 1.8314205184578896}
+{"updates": 14, "steps": 7168, "episodes": 3, "wins": 0, "deaths": 9, "grazes": 321, "policy_loss": -0.013218196807429194, "value_loss": 215.7047758102417, "entropy": 1.8106961101293564}
+{"updates": 15, "steps": 7680, "episodes": 3, "wins": 0, "deaths": 10, "grazes": 332, "policy_loss": -0.006847516167908907, "value_loss": 189.4073362350464, "entropy": 1.758779440075159}
+{"updates": 16, "steps": 8000, "episodes": 3, "wins": 0, "deaths": 10, "grazes": 344, "policy_loss": -0.008844286389648914, "value_loss": 229.6070999145508, "entropy": 1.8394209444522858}
+{"status": "bc_and_ppo_completed_unpromoted", "native_budget": 20000, "bc_checkpoint_sha256": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54", "ppo_checkpoint_sha256": "dd110638e81e2479e13591ad1a5cfb0ab28e535d7b889e25cdefd287f55b17d9"}

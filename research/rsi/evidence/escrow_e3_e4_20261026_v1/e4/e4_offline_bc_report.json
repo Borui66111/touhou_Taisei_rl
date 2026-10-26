@@ -1,0 +1,405 @@
+{
+  "experiment": "E4_NATIVE_DATASET_CLASS_AWARE_IMITATION",
+  "status": "offline_learner_created_native_gameplay_not_yet_tested",
+  "data_sha256": "02dd11feb60e0dcb5710ae8af3cf33dca7e7e77756d6467f822ad94d0f5a0d8d",
+  "baseline_bc_sha256": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54",
+  "candidate_sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc",
+  "teacher_game_interactions_this_run": 0,
+  "training_frame_count": 10800,
+  "holdout_frame_count": 1200,
+  "loss": "0.5 * unweighted CE + 0.5 * normalized capped sqrt-inverse-class-frequency CE",
+  "seed": 48030,
+  "epochs": 16,
+  "train_class_counts": [
+    7491,
+    138,
+    0,
+    114,
+    121,
+    14,
+    20,
+    0,
+    0,
+    0,
+    101,
+    111,
+    1052,
+    991,
+    159,
+    154,
+    174,
+    160
+  ],
+  "class_weights": [
+    0.6326588988304138,
+    2.9916305541992188,
+    0.6326588988304138,
+    3.2915091514587402,
+    3.1948819160461426,
+    3.7959535121917725,
+    3.7959535121917725,
+    0.6326588988304138,
+    0.6326588988304138,
+    0.6326588988304138,
+    3.496929168701172,
+    3.3356924057006836,
+    1.0835267305374146,
+    1.116376519203186,
+    2.787076950073242,
+    2.8319602012634277,
+    2.6642370223999023,
+    2.778353691101074
+  ],
+  "baseline_holdout": {
+    "frame_accuracy": 0.8391666666666666,
+    "always_stay_accuracy": 0.6916666666666667,
+    "stay_recall": 0.944578313253012,
+    "nonstay_accuracy": 0.6027027027027027,
+    "macro_recall_supported_labels": 0.40561504547083455,
+    "per_action": [
+      {
+        "action": 0,
+        "support": 830,
+        "recall": 0.944578313253012
+      },
+      {
+        "action": 1,
+        "support": 18,
+        "recall": 0.6111111111111112
+      },
+      {
+        "action": 2,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 3,
+        "support": 10,
+        "recall": 0.9
+      },
+      {
+        "action": 4,
+        "support": 17,
+        "recall": 0.4117647058823529
+      },
+      {
+        "action": 5,
+        "support": 2,
+        "recall": 0.0
+      },
+      {
+        "action": 6,
+        "support": 4,
+        "recall": 0.0
+      },
+      {
+        "action": 7,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 8,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 9,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 10,
+        "support": 8,
+        "recall": 0.5
+      },
+      {
+        "action": 11,
+        "support": 12,
+        "recall": 0.5
+      },
+      {
+        "action": 12,
+        "support": 121,
+        "recall": 0.8264462809917356
+      },
+      {
+        "action": 13,
+        "support": 106,
+        "recall": 0.7735849056603774
+      },
+      {
+        "action": 14,
+        "support": 12,
+        "recall": 0.0
+      },
+      {
+        "action": 15,
+        "support": 23,
+        "recall": 0.043478260869565216
+      },
+      {
+        "action": 16,
+        "support": 20,
+        "recall": 0.05
+      },
+      {
+        "action": 17,
+        "support": 17,
+        "recall": 0.11764705882352941
+      }
+    ]
+  },
+  "candidate_holdout": {
+    "frame_accuracy": 0.8391666666666666,
+    "always_stay_accuracy": 0.6916666666666667,
+    "stay_recall": 0.936144578313253,
+    "nonstay_accuracy": 0.6216216216216216,
+    "macro_recall_supported_labels": 0.4917309244602828,
+    "per_action": [
+      {
+        "action": 0,
+        "support": 830,
+        "recall": 0.936144578313253
+      },
+      {
+        "action": 1,
+        "support": 18,
+        "recall": 0.6111111111111112
+      },
+      {
+        "action": 2,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 3,
+        "support": 10,
+        "recall": 0.9
+      },
+      {
+        "action": 4,
+        "support": 17,
+        "recall": 0.5294117647058824
+      },
+      {
+        "action": 5,
+        "support": 2,
+        "recall": 0.0
+      },
+      {
+        "action": 6,
+        "support": 4,
+        "recall": 0.5
+      },
+      {
+        "action": 7,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 8,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 9,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 10,
+        "support": 8,
+        "recall": 0.5
+      },
+      {
+        "action": 11,
+        "support": 12,
+        "recall": 0.75
+      },
+      {
+        "action": 12,
+        "support": 121,
+        "recall": 0.8264462809917356
+      },
+      {
+        "action": 13,
+        "support": 106,
+        "recall": 0.7075471698113207
+      },
+      {
+        "action": 14,
+        "support": 12,
+        "recall": 0.16666666666666666
+      },
+      {
+        "action": 15,
+        "support": 23,
+        "recall": 0.13043478260869565
+      },
+      {
+        "action": 16,
+        "support": 20,
+        "recall": 0.15
+      },
+      {
+        "action": 17,
+        "support": 17,
+        "recall": 0.17647058823529413
+      }
+    ]
+  },
+  "history": [
+    {
+      "epoch": 1,
+      "weighted_loss": 1.8722502621897945,
+      "frame_accuracy": 0.6916666666666667,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 1.0,
+      "nonstay_accuracy": 0.0,
+      "macro_recall_supported_labels": 0.07142857142857142
+    },
+    {
+      "epoch": 2,
+      "weighted_loss": 1.4984243638427168,
+      "frame_accuracy": 0.7083333333333334,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9795180722891567,
+      "nonstay_accuracy": 0.1,
+      "macro_recall_supported_labels": 0.09205797818705712
+    },
+    {
+      "epoch": 3,
+      "weighted_loss": 1.2611856214205424,
+      "frame_accuracy": 0.7741666666666667,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.946987951807229,
+      "nonstay_accuracy": 0.3864864864864865,
+      "macro_recall_supported_labels": 0.1729832676364946
+    },
+    {
+      "epoch": 4,
+      "weighted_loss": 1.1403546144344188,
+      "frame_accuracy": 0.7866666666666666,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9457831325301205,
+      "nonstay_accuracy": 0.4297297297297297,
+      "macro_recall_supported_labels": 0.22014328541509307
+    },
+    {
+      "epoch": 5,
+      "weighted_loss": 1.0583467683085688,
+      "frame_accuracy": 0.7983333333333333,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9337349397590361,
+      "nonstay_accuracy": 0.4945945945945946,
+      "macro_recall_supported_labels": 0.23741303567167918
+    },
+    {
+      "epoch": 6,
+      "weighted_loss": 0.9713624593946669,
+      "frame_accuracy": 0.8108333333333333,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9481927710843373,
+      "nonstay_accuracy": 0.5027027027027027,
+      "macro_recall_supported_labels": 0.2599578450130745
+    },
+    {
+      "epoch": 7,
+      "weighted_loss": 0.8756180384423997,
+      "frame_accuracy": 0.8116666666666666,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.946987951807229,
+      "nonstay_accuracy": 0.5081081081081081,
+      "macro_recall_supported_labels": 0.3188556091312342
+    },
+    {
+      "epoch": 8,
+      "weighted_loss": 0.8034890772678234,
+      "frame_accuracy": 0.8141666666666667,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9518072289156626,
+      "nonstay_accuracy": 0.5054054054054054,
+      "macro_recall_supported_labels": 0.3467635136795787
+    },
+    {
+      "epoch": 9,
+      "weighted_loss": 0.7618424681380943,
+      "frame_accuracy": 0.8258333333333333,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9506024096385542,
+      "nonstay_accuracy": 0.5459459459459459,
+      "macro_recall_supported_labels": 0.3724129688582781
+    },
+    {
+      "epoch": 10,
+      "weighted_loss": 0.7176071912271005,
+      "frame_accuracy": 0.8333333333333334,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9433734939759036,
+      "nonstay_accuracy": 0.5864864864864865,
+      "macro_recall_supported_labels": 0.4468625476546035
+    },
+    {
+      "epoch": 11,
+      "weighted_loss": 0.6947044527972186,
+      "frame_accuracy": 0.8325,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9337349397590361,
+      "nonstay_accuracy": 0.6054054054054054,
+      "macro_recall_supported_labels": 0.47420085609773865
+    },
+    {
+      "epoch": 12,
+      "weighted_loss": 0.6692487957742479,
+      "frame_accuracy": 0.8391666666666666,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.936144578313253,
+      "nonstay_accuracy": 0.6216216216216216,
+      "macro_recall_supported_labels": 0.4465242603805396
+    },
+    {
+      "epoch": 13,
+      "weighted_loss": 0.6497482896292651,
+      "frame_accuracy": 0.8475,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9506024096385542,
+      "nonstay_accuracy": 0.6162162162162163,
+      "macro_recall_supported_labels": 0.4552635557197795
+    },
+    {
+      "epoch": 14,
+      "weighted_loss": 0.6278696261511909,
+      "frame_accuracy": 0.8366666666666667,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9421686746987952,
+      "nonstay_accuracy": 0.6,
+      "macro_recall_supported_labels": 0.4763620808432955
+    },
+    {
+      "epoch": 15,
+      "weighted_loss": 0.6170857532819112,
+      "frame_accuracy": 0.8425,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.9325301204819277,
+      "nonstay_accuracy": 0.6405405405405405,
+      "macro_recall_supported_labels": 0.5480723668292811
+    },
+    {
+      "epoch": 16,
+      "weighted_loss": 0.6041597219749734,
+      "frame_accuracy": 0.8391666666666666,
+      "always_stay_accuracy": 0.6916666666666667,
+      "stay_recall": 0.936144578313253,
+      "nonstay_accuracy": 0.6216216216216216,
+      "macro_recall_supported_labels": 0.4917309244602828
+    }
+  ],
+  "comparison_is_training_distribution_only": true,
+  "limitations": [
+    "Random-frame split from ~1.2 real teacher episodes is temporally correlated.",
+    "Class-weighted accuracy/macro recall is not native survival competence.",
+    "The weighting rule is exploratory and may degrade genuine gameplay.",
+    "Requires 16 paired native development-game evaluations before any neural improvement claim."
+  ],
+  "promote_policy": false
+}

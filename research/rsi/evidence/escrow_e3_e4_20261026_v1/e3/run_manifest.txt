@@ -1,0 +1,13 @@
+experiment=E3_NATIVE_TEACHER_DISTILL_V1
+code_sha=880d43197301c97c2675a57370c1a9ae1728e569
+run_id=40219788151
+upstream=REPO_URL=https://github.com/touhourl/taisei-sim.git COMMIT=789200ff255c681b3ed4230a3f26f0b8c12c78fe 
+stage=1
+difficulty=1
+demonstration_native_decisions=12000
+ppo_native_decisions=8000
+max_train_native_interactions=20000
+training_seeds=48030_demo,48020_ppo
+eval_seed_range=42100-42115
+sealed_final_seeds=43000-43099_unused
+skill_space=18_movement_only_no_manual_Bomb_or_Surge

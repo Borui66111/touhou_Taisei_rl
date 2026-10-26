@@ -1,0 +1,16 @@
+{"updates": 1, "steps": 512, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 5, "policy_loss": -0.02021357271587476, "value_loss": 283.08424711227417, "entropy": 0.35305654583498836}
+{"updates": 2, "steps": 1024, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 16, "policy_loss": 0.04246172896819189, "value_loss": 258.50157499313354, "entropy": 0.7295057997107506}
+{"updates": 3, "steps": 1536, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 77, "policy_loss": 0.006024309957865626, "value_loss": 263.81458139419556, "entropy": 1.1052960697561502}
+{"updates": 4, "steps": 2048, "episodes": 0, "wins": 0, "deaths": 0, "grazes": 136, "policy_loss": -0.0065801409073174, "value_loss": 267.70979404449463, "entropy": 1.3077195771038532}
+{"updates": 5, "steps": 2560, "episodes": 0, "wins": 0, "deaths": 1, "grazes": 147, "policy_loss": 0.0003515468561090529, "value_loss": 215.21849966049194, "entropy": 1.0151327438652515}
+{"updates": 6, "steps": 3072, "episodes": 0, "wins": 0, "deaths": 2, "grazes": 178, "policy_loss": 0.06886791123542935, "value_loss": 201.56613874435425, "entropy": 1.1168556809425354}
+{"updates": 7, "steps": 3584, "episodes": 1, "wins": 0, "deaths": 3, "grazes": 199, "policy_loss": -0.004453801142517477, "value_loss": 233.09724760055542, "entropy": 1.4075705744326115}
+{"updates": 8, "steps": 4096, "episodes": 1, "wins": 0, "deaths": 4, "grazes": 201, "policy_loss": -0.004994956543669105, "value_loss": 209.44981384277344, "entropy": 1.5160812847316265}
+{"updates": 9, "steps": 4608, "episodes": 1, "wins": 0, "deaths": 4, "grazes": 229, "policy_loss": -0.0059967514825984836, "value_loss": 254.4737195968628, "entropy": 1.6617762260138988}
+{"updates": 10, "steps": 5120, "episodes": 1, "wins": 0, "deaths": 5, "grazes": 247, "policy_loss": -0.00734789008856751, "value_loss": 203.86982679367065, "entropy": 1.766177199780941}
+{"updates": 11, "steps": 5632, "episodes": 2, "wins": 0, "deaths": 6, "grazes": 261, "policy_loss": -0.008013412560103461, "value_loss": 214.27726125717163, "entropy": 1.7410866394639015}
+{"updates": 12, "steps": 6144, "episodes": 2, "wins": 0, "deaths": 8, "grazes": 269, "policy_loss": -0.005344323464669287, "value_loss": 192.7767515182495, "entropy": 1.8256983794271946}
+{"updates": 13, "steps": 6656, "episodes": 2, "wins": 0, "deaths": 8, "grazes": 292, "policy_loss": -0.009932078799465671, "value_loss": 233.23427963256836, "entropy": 1.8314205184578896}
+{"updates": 14, "steps": 7168, "episodes": 3, "wins": 0, "deaths": 9, "grazes": 321, "policy_loss": -0.013218196807429194, "value_loss": 215.7047758102417, "entropy": 1.8106961101293564}
+{"updates": 15, "steps": 7680, "episodes": 3, "wins": 0, "deaths": 10, "grazes": 332, "policy_loss": -0.006847516167908907, "value_loss": 189.4073362350464, "entropy": 1.758779440075159}
+{"updates": 16, "steps": 8000, "episodes": 3, "wins": 0, "deaths": 10, "grazes": 344, "policy_loss": -0.008844286389648914, "value_loss": 229.6070999145508, "entropy": 1.8394209444522858}

@@ -1,0 +1,158 @@
+{
+  "artifacts": {
+    "e3": {
+      "artifact_id": 12609092648,
+      "expires_at": "2026-11-15T18:12:07Z",
+      "files": {
+        "bc_history.jsonl": {
+          "bytes": 1603,
+          "sha256": "ba5664e53301afdc98f6b9d93bc41d2f27431cbd3a7ee0e75af70e8a7b2d27e8"
+        },
+        "comparison.stdout.log": {
+          "bytes": 2162,
+          "sha256": "1f9dd1f24f7492862b471745bc944230567ce4a8a310c19883a916f227327844"
+        },
+        "determinism.log": {
+          "bytes": 164,
+          "sha256": "b8ee709993ddaae12fe8645da9aad2e49805b5d9eb49478e1d0585925bc041a7"
+        },
+        "e3_comparison.json": {
+          "bytes": 2162,
+          "sha256": "1f9dd1f24f7492862b471745bc944230567ce4a8a310c19883a916f227327844"
+        },
+        "e3_manifest.json": {
+          "bytes": 1366,
+          "sha256": "d62212ae98c4f554dd7f81d8552c12d8fb7a86f311493ca04f490b175e740d0b"
+        },
+        "e3_training.stdout.log": {
+          "bytes": 9059,
+          "sha256": "53b854d913d5b2395228d85d771c6d9270e1e276ff7943f587968255e93e5756"
+        },
+        "native_build.log": {
+          "bytes": 339708,
+          "sha256": "a97522a5f4a70bc1a8eed1999b8a207da99f13c2f9c650b1350c2f52c4f112b2"
+        },
+        "native_smoke.log": {
+          "bytes": 843,
+          "sha256": "b97869192eb4dac330c115c17f75103448ec4fb59f187eb90b899bedde8f24dc"
+        },
+        "ppo_finetune.jsonl": {
+          "bytes": 2982,
+          "sha256": "5acde4623a06f7b2966b7ee2c2fa3450a73ba59ab561eb322ce12d786907c639"
+        },
+        "run_manifest.txt": {
+          "bytes": 494,
+          "sha256": "96c1964cc6fb378d52f2ed3e147858512c6a088d1f7fce5fb87afe5833118067"
+        },
+        "teacher_bc_ppo_seed48020.pt": {
+          "bytes": 1065036,
+          "sha256": "dd110638e81e2479e13591ad1a5cfb0ab28e535d7b889e25cdefd287f55b17d9"
+        },
+        "teacher_bc_ppo_seed48020_evaluation.jsonl": {
+          "bytes": 7143,
+          "sha256": "654a5ead23cab9406344f784b79169dd37c120cca89b8b73a19dd3272225316a"
+        },
+        "teacher_bc_ppo_seed48020_evaluation.stdout.log": {
+          "bytes": 410,
+          "sha256": "733a67e24b02938d03f6b2c41e41c500b78e353ccaabbad02f77956d4df9a69d"
+        },
+        "teacher_bc_seed48030.pt": {
+          "bytes": 350659,
+          "sha256": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54"
+        },
+        "teacher_bc_seed48030_evaluation.jsonl": {
+          "bytes": 7150,
+          "sha256": "703803e36e04845c45de50f203e883b14afc1e5ba965bf03f6c55854a510ca32"
+        },
+        "teacher_bc_seed48030_evaluation.stdout.log": {
+          "bytes": 393,
+          "sha256": "1702242e5f8a1d1213164265eb84de2b65f0a05a7d46bd5b14a8d19191794023"
+        },
+        "teacher_demonstrations_12000.npz": {
+          "bytes": 2865342,
+          "sha256": "02dd11feb60e0dcb5710ae8af3cf33dca7e7e77756d6467f822ad94d0f5a0d8d"
+        }
+      },
+      "run_id": 40219788151,
+      "zip_sha256": "ecb660decee9706dd62c8a98023d0fe0979b578c24eb6a037c089f1014b169d1"
+    },
+    "e4": {
+      "artifact_id": 12609314728,
+      "expires_at": "2026-11-15T18:28:40Z",
+      "files": {
+        "determinism.log": {
+          "bytes": 164,
+          "sha256": "b8ee709993ddaae12fe8645da9aad2e49805b5d9eb49478e1d0585925bc041a7"
+        },
+        "e4_native_comparison.json": {
+          "bytes": 6451,
+          "sha256": "11ea0a7d7f63f4bbec3fde152436532000619168b0870ec8ca34b8cd55065f7f"
+        },
+        "e4_native_comparison.stdout.log": {
+          "bytes": 6451,
+          "sha256": "11ea0a7d7f63f4bbec3fde152436532000619168b0870ec8ca34b8cd55065f7f"
+        },
+        "e4_offline_bc_report.json": {
+          "bytes": 10449,
+          "sha256": "39e663f3eb619b7cbfbd586f349b8ad2854113ace0aeb75350ab8633b2ba01b1"
+        },
+        "e4_offline_training.stdout.log": {
+          "bytes": 3967,
+          "sha256": "1896b257916ce5bc84595a47cc5ad8975ac35001a4946b3618a790230a29a9e0"
+        },
+        "e4_run_manifest.txt": {
+          "bytes": 435,
+          "sha256": "da870c1e49e5a8430e91cb30a95592c58a8edd5001a24390337c7caa11215744"
+        },
+        "native_build.log": {
+          "bytes": 339624,
+          "sha256": "477295583c42db957c733affc6a6071fa942492d3003070de10cd34f259ffd04"
+        },
+        "native_smoke.log": {
+          "bytes": 843,
+          "sha256": "b97869192eb4dac330c115c17f75103448ec4fb59f187eb90b899bedde8f24dc"
+        },
+        "risk_teacher_native.jsonl": {
+          "bytes": 7293,
+          "sha256": "e66b08af96a341651288256f42d93d90604e904c51921d4364f8b49ffa51f0e5"
+        },
+        "risk_teacher_native.stdout.log": {
+          "bytes": 84,
+          "sha256": "b383bce5076126fbc1865ea49d85006443fd23e9211ef5cae54018b6aaf12f86"
+        },
+        "teacher_bc_rebalanced_seed48030.pt": {
+          "bytes": 351133,
+          "sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc"
+        },
+        "teacher_bc_rebalanced_seed48030_native.jsonl": {
+          "bytes": 7159,
+          "sha256": "cefd841c784ac14accb39681070d6ec40ce12c52a13afd6f541d42bc247d8663"
+        },
+        "teacher_bc_rebalanced_seed48030_native.stdout.log": {
+          "bytes": 399,
+          "sha256": "9f3bec3cc10258116a435fd5691b06d4130f086dff53ff55e6bdca5c196b347c"
+        },
+        "teacher_bc_seed48030.pt": {
+          "bytes": 350659,
+          "sha256": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54"
+        },
+        "teacher_bc_seed48030_native.jsonl": {
+          "bytes": 7156,
+          "sha256": "8e050bc8cf983fe569bcab328adbfabfbcfa8d5f3d06d6355c9ed80a83bbf71e"
+        },
+        "teacher_bc_seed48030_native.stdout.log": {
+          "bytes": 398,
+          "sha256": "d81f0c8b865073ff0a87c1129d82e9f705528715bb71f8dde3bf8fd236b22578"
+        }
+      },
+      "run_id": 40220975924,
+      "zip_sha256": "1dc6ab9ffe7d5ab88d30c162246d0b2c7fe66c29556fb751b54886b4d2430789"
+    }
+  },
+  "branch": "research/rsi-automation-v1",
+  "gameplay_improvement_claimed": false,
+  "native_game_executed": false,
+  "pinned_native_commit": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+  "schema": "taisei_rsi_escrow_v1",
+  "source_checkout_recovered": false
+}

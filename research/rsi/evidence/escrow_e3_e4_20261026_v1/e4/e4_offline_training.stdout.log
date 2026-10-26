@@ -1,0 +1,202 @@
+{
+  "status": "offline_learner_created_native_gameplay_not_yet_tested",
+  "candidate_sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc",
+  "baseline_holdout": {
+    "frame_accuracy": 0.8391666666666666,
+    "always_stay_accuracy": 0.6916666666666667,
+    "stay_recall": 0.944578313253012,
+    "nonstay_accuracy": 0.6027027027027027,
+    "macro_recall_supported_labels": 0.40561504547083455,
+    "per_action": [
+      {
+        "action": 0,
+        "support": 830,
+        "recall": 0.944578313253012
+      },
+      {
+        "action": 1,
+        "support": 18,
+        "recall": 0.6111111111111112
+      },
+      {
+        "action": 2,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 3,
+        "support": 10,
+        "recall": 0.9
+      },
+      {
+        "action": 4,
+        "support": 17,
+        "recall": 0.4117647058823529
+      },
+      {
+        "action": 5,
+        "support": 2,
+        "recall": 0.0
+      },
+      {
+        "action": 6,
+        "support": 4,
+        "recall": 0.0
+      },
+      {
+        "action": 7,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 8,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 9,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 10,
+        "support": 8,
+        "recall": 0.5
+      },
+      {
+        "action": 11,
+        "support": 12,
+        "recall": 0.5
+      },
+      {
+        "action": 12,
+        "support": 121,
+        "recall": 0.8264462809917356
+      },
+      {
+        "action": 13,
+        "support": 106,
+        "recall": 0.7735849056603774
+      },
+      {
+        "action": 14,
+        "support": 12,
+        "recall": 0.0
+      },
+      {
+        "action": 15,
+        "support": 23,
+        "recall": 0.043478260869565216
+      },
+      {
+        "action": 16,
+        "support": 20,
+        "recall": 0.05
+      },
+      {
+        "action": 17,
+        "support": 17,
+        "recall": 0.11764705882352941
+      }
+    ]
+  },
+  "candidate_holdout": {
+    "frame_accuracy": 0.8391666666666666,
+    "always_stay_accuracy": 0.6916666666666667,
+    "stay_recall": 0.936144578313253,
+    "nonstay_accuracy": 0.6216216216216216,
+    "macro_recall_supported_labels": 0.4917309244602828,
+    "per_action": [
+      {
+        "action": 0,
+        "support": 830,
+        "recall": 0.936144578313253
+      },
+      {
+        "action": 1,
+        "support": 18,
+        "recall": 0.6111111111111112
+      },
+      {
+        "action": 2,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 3,
+        "support": 10,
+        "recall": 0.9
+      },
+      {
+        "action": 4,
+        "support": 17,
+        "recall": 0.5294117647058824
+      },
+      {
+        "action": 5,
+        "support": 2,
+        "recall": 0.0
+      },
+      {
+        "action": 6,
+        "support": 4,
+        "recall": 0.5
+      },
+      {
+        "action": 7,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 8,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 9,
+        "support": 0,
+        "recall": null
+      },
+      {
+        "action": 10,
+        "support": 8,
+        "recall": 0.5
+      },
+      {
+        "action": 11,
+        "support": 12,
+        "recall": 0.75
+      },
+      {
+        "action": 12,
+        "support": 121,
+        "recall": 0.8264462809917356
+      },
+      {
+        "action": 13,
+        "support": 106,
+        "recall": 0.7075471698113207
+      },
+      {
+        "action": 14,
+        "support": 12,
+        "recall": 0.16666666666666666
+      },
+      {
+        "action": 15,
+        "support": 23,
+        "recall": 0.13043478260869565
+      },
+      {
+        "action": 16,
+        "support": 20,
+        "recall": 0.15
+      },
+      {
+        "action": 17,
+        "support": 17,
+        "recall": 0.17647058823529413
+      }
+    ]
+  }
+}

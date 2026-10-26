@@ -1,0 +1,8 @@
+{
+  "result": "PASS",
+  "identical_frames": 600,
+  "seed": 42000,
+  "stage": 1,
+  "final_gameplay_digest": 14906249222316660935,
+  "observed_max_projectiles": 26
+}

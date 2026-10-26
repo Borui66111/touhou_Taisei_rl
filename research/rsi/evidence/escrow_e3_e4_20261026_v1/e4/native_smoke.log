@@ -1,0 +1,7 @@
+RESET: {"seed": 42000, "stage_id": 1, "player": [0.5, 0.8857142857142857, 0.0, 0.0, 0.0, 2.0, 3.0, 0.0], "digest": 9648900959758697208}
+{"frame": 1, "reward": 1.0, "projectiles": 3, "lasers": 0, "graze": 0, "deaths": 0, "digest": 15183316643797187425}
+{"frame": 61, "reward": 1.0, "projectiles": 19, "lasers": 0, "graze": 0, "deaths": 0, "digest": 6936111121100397962}
+{"frame": 121, "reward": 1.0, "projectiles": 19, "lasers": 0, "graze": 0, "deaths": 0, "digest": 10619353107213185533}
+{"frame": 181, "reward": 1.0, "projectiles": 16, "lasers": 0, "graze": 0, "deaths": 0, "digest": 7494394483530998960}
+{"frame": 241, "reward": 1.0, "projectiles": 18, "lasers": 0, "graze": 0, "deaths": 0, "digest": 13971068106045125038}
+{"frame": 300, "reward": 1.0, "projectiles": 22, "lasers": 0, "graze": 0, "deaths": 0, "digest": 7460280547467020504}

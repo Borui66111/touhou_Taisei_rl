@@ -1,0 +1,67 @@
+{
+  "experiment": "E3_BC_TEACHER_WARMSTART_NATIVE",
+  "status": "paired_native_diagnostic_no_promotion",
+  "native_training_steps": 20000,
+  "teacher_demo_steps": 12000,
+  "ppo_training_steps": 8000,
+  "teacher_training_seed": 48030,
+  "ppo_training_seed": 48020,
+  "eval_development_seeds": [
+    42100,
+    42101,
+    42102,
+    42103,
+    42104,
+    42105,
+    42106,
+    42107,
+    42108,
+    42109,
+    42110,
+    42111,
+    42112,
+    42113,
+    42114,
+    42115
+  ],
+  "bc_only": {
+    "n": 16,
+    "clears": 0,
+    "mean_alive_frames": 1346.5,
+    "mean_deaths": 3,
+    "mean_bombs_used": 0,
+    "mean_boss_damage": 0.0
+  },
+  "bc_then_ppo": {
+    "n": 16,
+    "clears": 0,
+    "mean_alive_frames": 1047.5625,
+    "mean_deaths": 3,
+    "mean_bombs_used": 0,
+    "mean_boss_damage": 0.0
+  },
+  "paired_alive_delta_after_ppo": -298.9375,
+  "paired_eval_seed_bootstrap_95pct_ci": [
+    -401.8125,
+    -234.375
+  ],
+  "paired_clear_delta_after_ppo": 0.0,
+  "context_reference_only_not_matched_this_run": {
+    "E1_movement_original_reward_mean_alive_frames": 1036.0,
+    "E2_existing_heuristic_mean_alive_frames": 1659.875,
+    "E2_risk_teacher_mean_alive_frames": 7598.1875
+  },
+  "model_sha256": {
+    "bc": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54",
+    "bc_ppo": "dd110638e81e2479e13591ad1a5cfb0ab28e535d7b889e25cdefd287f55b17d9"
+  },
+  "promote_policy": false,
+  "limitations": [
+    "Single training seed; 16 development game seeds and no unseen spells.",
+    "Teacher demonstrations share correlated adjacent frames; random-frame BC validation accuracy does not prove gameplay generalization.",
+    "All training interactions capped at 20k; 12k demonstrator decisions plus 8k on-policy PPO.",
+    "No stage-clearing competence is certified without actual native clears and vulnerable-state traces.",
+    "Historical E1/E2 mean-alive comparisons use separate GitHub runs; they are contextual, not within-run paired control."
+  ],
+  "decision": "Inspect the two learned policies' survival, clears and timeout behavior, then decide whether to extend teacher imitation, make curriculum shorter, or modify observations/rewards."
+}

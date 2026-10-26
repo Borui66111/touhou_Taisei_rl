@@ -1,0 +1,17 @@
+{
+  "policy": "ppo",
+  "episodes": 16,
+  "win_rate": 0.0,
+  "clear_rate": 0.0,
+  "truncation_rate": 0.0,
+  "mean_boss_damage": 0.0,
+  "mean_reward": 1265.6439375,
+  "mean_graze": 18.9375,
+  "mean_deaths": 3.0,
+  "mean_frames": 1505.625,
+  "mean_survival_frames": 1305.625,
+  "mean_score": 83811.875,
+  "mean_point_item_value": 10047.25,
+  "mean_bombs_used": 0.0,
+  "mean_logical_frame": 1491.625
+}
