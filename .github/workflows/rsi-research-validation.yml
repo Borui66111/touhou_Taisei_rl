@@ -35,6 +35,8 @@ on:
       - "research/rsi/test_e2_teacher_compare.py"
       - "research/rsi/policy_format_preflight.py"
       - "research/rsi/test_policy_format_preflight.py"
+      - "research/rsi/inspect_rendered_tsr.py"
+      - "research/rsi/test_inspect_rendered_tsr.py"
       - ".github/workflows/rsi-research-validation.yml"
   workflow_dispatch: {}
 
@@ -73,6 +75,7 @@ jobs:
           python -m unittest discover -s research/rsi -p 'test_e6_episode_holdout.py' -v
           python -m unittest discover -s research/rsi -p 'test_e5_audit_replay.py' -v
           python -m unittest discover -s research/rsi -p 'test_policy_format_preflight.py' -v
+          python -m unittest discover -s research/rsi -p 'test_inspect_rendered_tsr.py' -v
           python -m unittest discover -s research/rsi -p 'test_competence_eval.py' -v
           python -m unittest discover -s research/rsi -p 'test_reward_ablation.py' -v
           python -m unittest discover -s research/rsi -p 'test_risk_aware_teacher.py' -v
