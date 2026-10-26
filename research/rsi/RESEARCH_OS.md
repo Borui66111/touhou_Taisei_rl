@@ -1,7 +1,7 @@
 # Alice RSI Research OS — recursive strategy, experiment, and policy improvement
 
 **Version:** 0.1 (2026-10-25, Asia/Singapore) · **Status:** active protocol; native learning not yet validated.
-**Scope:** authentic Taisei, repository `Borui66111/touhou_Taisei_rl`; independent research branch `research/rsi-meta-controller-v1`.
+**Scope:** authentic Taisei, repository `Borui66111/touhou_Taisei_rl`; canonical writable branch `research/rsi-automation-v1` (see `research/rsi/BRANCH_POLICY.md`). Older branches are read-only evidence sources.
 **Canonical durable trajectory:** `research/rsi/trajectory/events.jsonl`; machine-validated, append-only in intention, immutable event IDs and source links. Every entry distinguishes observed results from proposals and unverified reports.
 
 ## 1. Mission, nonnegotiables, and what counts as progress
