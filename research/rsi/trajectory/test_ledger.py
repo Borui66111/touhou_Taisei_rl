@@ -45,6 +45,27 @@ class LedgerTest(unittest.TestCase):
             self.assertTrue(p.read_bytes().startswith(old))
             self.assertEqual(len(read_ledger(p)), 2)
 
+    def test_two_immutable_legacy_events_have_unknown_metrics(self):
+        rows = read_ledger(HERE / "events.jsonl")
+        legacy = {r["event_id"]: r for r in rows if r["event_id"] in {"T-20261026-33", "T-20261026-34"}}
+        self.assertEqual(set(legacy), {"T-20261026-33", "T-20261026-34"})
+        self.assertTrue(all("metrics" not in row for row in legacy.values()))
+        report = summary(rows)
+        self.assertEqual(report["total_events"], len(rows))
+        self.assertIsNone(report["validated_competence_improvement"])
+
+    def test_missing_metrics_still_rejected_for_new_events(self):
+        e = event()
+        e.pop("metrics")
+        with self.assertRaisesRegex(ValueError, "missing fields.*metrics"):
+            validate([e])
+
+    def test_legacy_exception_requires_exact_identity(self):
+        e = event(key="T-20261026-33")
+        e.pop("metrics")
+        with self.assertRaisesRegex(ValueError, "missing fields.*metrics"):
+            validate([e])
+
     def test_duplicate_rejected(self):
         with self.assertRaisesRegex(ValueError, "duplicate"):
             validate([event(), event()])

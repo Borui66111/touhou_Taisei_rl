@@ -24,6 +24,12 @@ FIELDS = {"event_id", "timestamp_utc", "project", "level", "kind", "status",
 # Initial history includes an optional missing decision field; normalize via this
 # only when loading legacy initial seed events, without fabricating outcomes.
 OPTIONAL_LEGACY_FIELDS = {"decision"}
+# Two immutable, previously committed E5 records omitted the metrics key.
+# Only their exact historical identities qualify; new records remain strict.
+LEGACY_MISSING_METRICS = {
+    "T-20261026-33": ("diagnosis", "succeeded", "2026-10-26T01:15:04Z", ("T-20261026-32",)),
+    "T-20261026-34": ("execution", "proposed", "2026-10-26T01:15:04Z", ("T-20261026-33",)),
+}
 # A previously committed retrospective diagnosis used descriptive non-schema tags.
 # Preserve the event bytes; admit ONLY this exact event as a legacy exception.
 LEGACY_EVENT_TAGS = {
@@ -60,6 +66,11 @@ def validate(events):
         if not isinstance(e, dict):
             raise ValueError(f"event {index}: not a JSON object")
         missing = FIELDS.difference(e) - OPTIONAL_LEGACY_FIELDS
+        legacy_identity = LEGACY_MISSING_METRICS.get(e.get("event_id"))
+        if (legacy_identity is not None and
+                (e.get("kind"), e.get("status"), e.get("timestamp_utc"),
+                 tuple(e.get("parent_ids", []))) == legacy_identity):
+            missing.discard("metrics")
         if missing:
             raise ValueError(f"event {index}: missing fields: {sorted(missing)}")
         key = e["event_id"]
@@ -97,11 +108,12 @@ def validate(events):
                     or not isinstance(ref.get("url"), str)
                     or not ref["url"].startswith("https://")):
                 raise ValueError(f"{key}: malformed evidence reference")
-        if not isinstance(e["cost"], dict) or not isinstance(e["metrics"], dict):
+        metrics = e.get("metrics", {})  # Unknown for the two immutable legacy entries.
+        if not isinstance(e["cost"], dict) or not isinstance(metrics, dict):
             raise ValueError(f"{key}: cost/metrics must be dictionaries")
         if e["kind"] == "measurement" and e["status"] == "succeeded" and not e["evidence"]:
             raise ValueError(f"{key}: successful measurement without evidence link")
-        if any(43000 <= x <= 43099 for x in _seed_values(e.get("metrics", {}))):
+        if any(43000 <= x <= 43099 for x in _seed_values(metrics)):
             raise ValueError(f"{key}: sealed final seed in research metrics")
         ids.add(key)
         prev_date = d
@@ -136,7 +148,7 @@ def summary(events):
     by_status = {status: sum(e["status"] == status for e in events) for status in sorted(STATUSES)}
     # Never collapse successful *engineering* events into learned gameplay progress.
     native_verified = [e for e in events if e["kind"] == "measurement"
-                       and e["metrics"].get("verified_environment") == "native_reexecuted_and_verified"]
+                       and e.get("metrics", {}).get("verified_environment") == "native_reexecuted_and_verified"]
     newest = events[-1] if events else None
     pending = [e for e in events if e["status"] in {"proposed", "blocked", "review_required"} or e["review_required"]]
     return {
