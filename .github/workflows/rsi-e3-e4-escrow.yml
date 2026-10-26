@@ -1,0 +1,71 @@
+name: RSI E3 E4 immutable native evidence escrow
+
+# Source-only preservation of expiring verified native evidence. Never builds Taisei.
+on:
+  push:
+    branches: [research/rsi-automation-v1]
+    paths:
+      - "research/rsi/E3_E4_ESCROW_REQUEST.md"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: taisei-e3-e4-evidence-escrow
+  cancel-in-progress: false
+
+jobs:
+  preserve-evidence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: research/rsi-automation-v1
+          fetch-depth: 1
+          persist-credentials: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate escrow safety checks (source-only)
+        run: python -m unittest discover -s research/rsi -p 'test_escrow_native_artifacts.py' -v
+      - name: Retrieve immutable E3 artifact before 2026-11-15 expiration
+        uses: actions/download-artifact@v4
+        with:
+          name: taisei-e3-distillation-40219788151
+          run-id: 40219788151
+          github-token: ${{ github.token }}
+          repository: Borui66111/touhou_Taisei_rl
+          path: ${{ runner.temp }}/taisei-escrow-e3
+      - name: Retrieve immutable E4 artifact before 2026-11-15 expiration
+        uses: actions/download-artifact@v4
+        with:
+          name: taisei-e4-rebalanced-bc-40220975924
+          run-id: 40220975924
+          github-token: ${{ github.token }}
+          repository: Borui66111/touhou_Taisei_rl
+          path: ${{ runner.temp }}/taisei-escrow-e4
+      - name: Verify checkpoint/data hashes and preserve all original evidence files
+        run: |
+          python research/rsi/escrow_native_artifacts.py \
+            --e3 "${{ runner.temp }}/taisei-escrow-e3" \
+            --e4 "${{ runner.temp }}/taisei-escrow-e4" \
+            --destination research/rsi/evidence/escrow_e3_e4_20261026_v1
+      - name: Commit immutable evidence directly to canonical branch (fast-forward only)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -f research/rsi/evidence/escrow_e3_e4_20261026_v1
+          git diff --cached --quiet && { echo "ERROR: no evidence staged"; exit 1; }
+          git commit -m "evidence(rsi): escrow E3/E4 native checkpoints and traces before expiry"
+          git push origin HEAD:refs/heads/research/rsi-automation-v1
+      - name: Upload evidence manifest even if verification/push fails
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: taisei-e3-e4-escrow-manifest-${{ github.run_id }}
+          path: research/rsi/evidence/escrow_e3_e4_20261026_v1/manifest.json
+          if-no-files-found: ignore
+          retention-days: 21
