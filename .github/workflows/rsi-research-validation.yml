@@ -14,6 +14,9 @@ on:
       - "research/rsi/test_escrow_native_artifacts.py"
       - "research/rsi/stage_e5_escrow.py"
       - "research/rsi/test_stage_e5_escrow.py"
+      - "research/rsi/e6_episode_holdout.py"
+      - "research/rsi/test_e6_episode_holdout.py"
+      - "research/rsi/evidence/e6_episode_disjoint_bc_20261026.json"
       - ".github/workflows/rsi-e3-e4-escrow.yml"
       - ".github/workflows/rsi-e2-teacher.yml"
       - ".github/workflows/rsi-e3-distill.yml"
@@ -67,6 +70,7 @@ jobs:
           python -m unittest discover -s research/rsi -p 'test_verify_pinned_local_checkout.py' -v
           python -m unittest discover -s research/rsi -p 'test_escrow_native_artifacts.py' -v
           python -m unittest discover -s research/rsi -p 'test_stage_e5_escrow.py' -v
+          python -m unittest discover -s research/rsi -p 'test_e6_episode_holdout.py' -v
           python -m unittest discover -s research/rsi -p 'test_e5_audit_replay.py' -v
           python -m unittest discover -s research/rsi -p 'test_policy_format_preflight.py' -v
           python -m unittest discover -s research/rsi -p 'test_competence_eval.py' -v
