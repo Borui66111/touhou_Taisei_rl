@@ -20,6 +20,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+      - name: Preflight locked native Taisei source before expensive dependencies
+        run: |
+          python research/rsi/preflight_native_upstream.py \
+            --lock my_test/UPSTREAM.lock \
+            --out my_test/results/rsi_e3_distill_v1/upstream_preflight.json
       - name: Install actual pinned native Taisei, resource-packer and PyTorch dependencies
         run: |
           sudo apt-get update
