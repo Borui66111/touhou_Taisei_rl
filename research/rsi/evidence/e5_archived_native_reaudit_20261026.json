@@ -1,0 +1,111 @@
+{
+  "schema": "taisei_rsi_e5_archived_native_reaudit_v1",
+  "experiment": "E5_DEMONSTRATION_COVERAGE_AND_REPLAY_GATE",
+  "recorded_utc": "2026-10-26",
+  "repository_branch": "research/rsi-automation-v1",
+  "evidence_label": "independently_reparsed_native_artifacts_not_new_gameplay",
+  "source_e3": {
+    "run_id": 40219788151,
+    "artifact_id": 12609092648,
+    "dataset_sha256": "02dd11feb60e0dcb5710ae8af3cf33dca7e7e77756d6467f822ad94d0f5a0d8d",
+    "decisions": 12000,
+    "complete_episodes": 1,
+    "partial_episodes": 1,
+    "segments": [
+      {
+        "seed": 48030,
+        "start": 0,
+        "end_exclusive": 7857,
+        "decisions": 7857,
+        "stay_fraction": 0.6861397479954181,
+        "action_changes": 1083,
+        "longest_identical_run": 426
+      },
+      {
+        "seed": 48031,
+        "start": 7857,
+        "end_exclusive": 12000,
+        "decisions": 4143,
+        "stay_fraction": 0.7072169925174994,
+        "action_changes": 458,
+        "longest_identical_run": 387
+      }
+    ],
+    "mean_stay_fraction": 0.6934166666666667
+  },
+  "source_e4": {
+    "run_id": 40220975924,
+    "artifact_id": 12609314728,
+    "checkpoint_sha256": {
+      "original": "87b43918d0181355435f105e3fcec44d7fd314c12aec6978b63ec33e9955cf54",
+      "reweighted": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc"
+    },
+    "eval_seeds": [
+      42132,
+      42133,
+      42134,
+      42135,
+      42136,
+      42137,
+      42138,
+      42139,
+      42140,
+      42141,
+      42142,
+      42143,
+      42144,
+      42145,
+      42146,
+      42147
+    ],
+    "mean_alive_frames": {
+      "original": 1305.625,
+      "reweighted": 1387.5625,
+      "teacher": 7252.1875
+    },
+    "paired_reweighted_minus_original": 81.9375,
+    "seedwise_delta": [
+      326,
+      261,
+      125,
+      -238,
+      31,
+      -33,
+      269,
+      297,
+      -284,
+      -230,
+      86,
+      100,
+      510,
+      -104,
+      -117,
+      312
+    ],
+    "positive_seed_count": 10,
+    "negative_seed_count": 6,
+    "clears": {
+      "original": 0,
+      "reweighted": 0,
+      "teacher": 0
+    },
+    "boss_damage_neural": 0,
+    "engine_determinism_600_frames": true
+  },
+  "audit": {
+    "data_and_checkpoint_hashes_match": true,
+    "per_episode_e4_aggregates_recomputed": true,
+    "paired_delta_recomputed": true,
+    "source_only_replay_checker_tests_passed_locally": 3,
+    "independent_native_policy_replay_status": "pending",
+    "new_native_training_decisions": 0
+  },
+  "limitations": [
+    "E3 1 complete plus 1 partial game episode is inadequate for statistically trustworthy episode-disjoint generalization claims",
+    "E4 native evaluation shows no clears or boss damage from learned controllers",
+    "No synchronized E4 per-action replay was included in original experiment",
+    "Current E5 code requires future genuine native replay CI to establish action-level reproducibility; source tests are not gameplay proof"
+  ],
+  "decision": "Do not promote or HPO E4. Run two-process E5 native replay on two development seeds and verify all movement/player/threat state traces and terminal digests. Collect independent diverse demonstration episodes before E5 training.",
+  "review_required": false
+}
