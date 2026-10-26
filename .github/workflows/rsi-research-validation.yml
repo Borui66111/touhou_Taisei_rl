@@ -5,6 +5,10 @@ on:
     branches: [research/rsi-automation-v1]
     paths:
       - "research/rsi/trajectory/**"
+      - "research/rsi/preflight_native_upstream.py"
+      - "research/rsi/test_preflight_native_upstream.py"
+      - ".github/workflows/rsi-e5-native-replay.yml"
+      - "my_test/UPSTREAM.lock"
       - "research/rsi/competence_eval.py"
       - "research/rsi/test_competence_eval.py"
       - "research/rsi/train_reward_ablation.py"
@@ -46,11 +50,22 @@ jobs:
       - name: Validate research and format tests (no native game fallback)
         run: |
           python -m unittest discover -s research/rsi/trajectory -p 'test_*.py' -v
+          python -m unittest discover -s research/rsi -p 'test_preflight_native_upstream.py' -v
           python -m unittest discover -s research/rsi -p 'test_policy_format_preflight.py' -v
           python -m unittest discover -s research/rsi -p 'test_competence_eval.py' -v
           python -m unittest discover -s research/rsi -p 'test_reward_ablation.py' -v
           python -m unittest discover -s research/rsi -p 'test_risk_aware_teacher.py' -v
           python -m unittest discover -s research/rsi -p 'test_e2_teacher_compare.py' -v
+      - name: Diagnose pinned source access without running native Taisei
+        run: |
+          set +e
+          python research/rsi/preflight_native_upstream.py \
+            --lock my_test/UPSTREAM.lock \
+            --out research_evidence/upstream_preflight.json
+          rc=$?
+          set -e
+          if [ "$rc" -ne 0 ] && [ "$rc" -ne 2 ]; then exit "$rc"; fi
+          echo "Upstream access preflight exit=$rc (blocked source is diagnostic, not a source-test failure)"
       - name: Generate research timeline digest
         run: |
           python research/rsi/trajectory/ledger.py summarize \
@@ -61,5 +76,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: rsi-research-integrity
-          path: research_evidence/rsi_digest.json
+          path: |
+            research_evidence/rsi_digest.json
+            research_evidence/upstream_preflight.json
           if-no-files-found: ignore
