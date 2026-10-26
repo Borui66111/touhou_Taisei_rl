@@ -66,6 +66,13 @@ class LedgerTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing fields.*metrics"):
             validate([e])
 
+    def test_historical_evidence_aliases_rejected_for_new_events(self):
+        for tag in ("tests", "request"):
+            e = event()
+            e["evidence"] = [{"type": tag, "url": "https://example.org/test"}]
+            with self.subTest(tag=tag), self.assertRaisesRegex(ValueError, "malformed evidence"):
+                validate([e])
+
     def test_duplicate_rejected(self):
         with self.assertRaisesRegex(ValueError, "duplicate"):
             validate([event(), event()])

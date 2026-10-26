@@ -36,6 +36,11 @@ LEGACY_EVENT_TAGS = {
     "T-20261025-28": ("failure_diagnosis_and_source_fix", "fix_committed_not_rerun"),
 }
 LEGACY_EVIDENCE_TYPES = {"source_fix", "test"}
+# Preserve historical aliases only for the two precisely identified E5 entries.
+LEGACY_EVIDENCE_BY_ID = {
+    "T-20261026-33": {"tests"},
+    "T-20261026-34": {"request"},
+}
 
 
 def read_ledger(path):
@@ -67,9 +72,10 @@ def validate(events):
             raise ValueError(f"event {index}: not a JSON object")
         missing = FIELDS.difference(e) - OPTIONAL_LEGACY_FIELDS
         legacy_identity = LEGACY_MISSING_METRICS.get(e.get("event_id"))
-        if (legacy_identity is not None and
+        legacy_identity_match = (legacy_identity is not None and
                 (e.get("kind"), e.get("status"), e.get("timestamp_utc"),
-                 tuple(e.get("parent_ids", []))) == legacy_identity):
+                 tuple(e.get("parent_ids", []))) == legacy_identity)
+        if legacy_identity_match:
             missing.discard("metrics")
         if missing:
             raise ValueError(f"event {index}: missing fields: {sorted(missing)}")
@@ -104,7 +110,8 @@ def validate(events):
         for ref in e["evidence"]:
             if (not isinstance(ref, dict)
                     or ref.get("type") not in ({"commit", "workflow", "issue", "source", "branch", "artifact", "report"}
-                                                  | (LEGACY_EVIDENCE_TYPES if known_legacy else set()))
+                                                  | (LEGACY_EVIDENCE_TYPES if known_legacy else set())
+                                                  | (LEGACY_EVIDENCE_BY_ID.get(key, set()) if legacy_identity_match else set()))
                     or not isinstance(ref.get("url"), str)
                     or not ref["url"].startswith("https://")):
                 raise ValueError(f"{key}: malformed evidence reference")
