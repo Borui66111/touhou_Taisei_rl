@@ -29,7 +29,7 @@ class LocalNativeOperatorTests(unittest.TestCase):
         self.assertFalse(d['native_ready'])
         self.assertFalse(d['source']['commit_verified'])
         self.assertFalse(d['fresh_native_game_executed'])
-        self.assertIn('taisei_ffi.py', ' '.join(d['missing_canonical_source_files']))
+        self.assertIn('Exact pinned native simulator Git checkout absent', d['source']['reason'])
 
     def test_source_checkout_cannot_be_certified_by_bare_zip_or_wrong_lock(self):
         with tempfile.TemporaryDirectory() as t:
