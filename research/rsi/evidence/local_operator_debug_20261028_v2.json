@@ -1,0 +1,90 @@
+{
+  "schema": "taisei_local_operator_debug_v2",
+  "date_sgt": "2026-10-28",
+  "canonical_branch": "research/rsi-automation-v1",
+  "task": "retry, debug and harden local-first native RSI experiment and replay pipeline",
+  "source_revision": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+  "execution_backend": "ChatGPT temporary CPU-only container",
+  "source_recovery": {
+    "git_checkout_present": false,
+    "upstream_github_connector_result": "404 NOT_FOUND",
+    "direct_git_clone_error": "Could not resolve host github.com",
+    "meson_installed": false,
+    "backports_zstd_installed": false,
+    "dependency_install_attempt": "pip install meson>=1.8 backports.zstd failed because configured network DNS unavailable",
+    "native_build_executed": false,
+    "reason": "Pinned source and online build packages unavailable; exact fork required, public base taisei-project/taisei incompatible ABI"
+  },
+  "local_data": {
+    "artifact_origin": "E3 artifact 12609092648, E4 artifact 12609314728, prior v1 CPU training bundle",
+    "sha256_checked": [
+      "teacher_demonstrations_12000.npz",
+      "teacher_bc_seed48030.pt E3",
+      "teacher_bc_seed48030.pt E4",
+      "teacher_bc_rebalanced_seed48030.pt E4"
+    ],
+    "native_episode_summaries_reparsed": {
+      "e3_bc_n": 16,
+      "e3_bc_ppo_n": 16,
+      "e4_bc_n": 16,
+      "e4_weighted_bc_n": 16,
+      "e4_risk_teacher_n": 16
+    },
+    "e3_mean_alive_bc": 1346.5,
+    "e3_mean_alive_after_ppo": 1047.5625,
+    "e3_paired_difference": -298.9375,
+    "e4_bc_mean_alive": 1305.625,
+    "e4_weighted_mean_alive": 1387.5625,
+    "e4_paired_difference": 81.9375,
+    "e4_risk_teacher_mean_alive": 7252.1875,
+    "e4_teacher_timeouts": 2,
+    "all_policies_stage_clears": 0
+  },
+  "hardening": {
+    "source_script": "research/rsi/local_native_operator.py",
+    "tests": "research/rsi/test_local_native_operator.py",
+    "test_count": 13,
+    "tests_passed": 13,
+    "other_e6_tests_passed": 6,
+    "verified_independent_zip_extract_tests": 13,
+    "verified_independent_zip_archive_audit": true,
+    "issues_found_and_fixed": [
+      "Existing experiment directory would be reused, risking overwriting/mixed evidence. Now refuses existing output.",
+      "Old local source readiness checked commit/submodule status incompletely. Now checks exact lock, original Git origin, commit object, clean tree, recursive initialized submodules and branch.",
+      "Native launcher previously had no robust one-experiment-at-a-time lock or process-group timeout. Added lock, atomic manifests/journal and <=60 minute deadline.",
+      "No protection against repeat E5 after a completed local run. Added persistent experiment signature success registry.",
+      "Archive audit relied solely on local bundle layout. Added canonical Git escrow E3/E4 support so branch source tests are portable.",
+      "Rendered replay validation risked treating header-only `.tsr` as sufficient. Reject 44-byte fixture and require full native replay, real video and separate human/model visual review status.",
+      "Package contents not independently checked for portability. Full ZIP was extracted in a separate temporary directory; SHA-256 manifest and all 13 operator tests passed."
+    ],
+    "unit_test_video_fixture": "FFmpeg solid-color media verifies video extraction only; never claimed to be Taisei footage",
+    "local_runner_does_not_trigger_actions": true,
+    "code_commits": [
+      "25e3e172f919036c833d820311535c0ecd33ae1c",
+      "ae32e035e8089ffc29f13640a398a0cb077dd1cc",
+      "4afd37423d9611f98076d33f74a6cc5870b55417",
+      "ffa2817039202c0eacc3f182df27ed9a26d188d0",
+      "cf9c20c2f143744fdb57d123009271cf8406e978"
+    ]
+  },
+  "saved_local_bundle": {
+    "library_path": "/AI/Taisei_RSI_Local_Automation_2026-10-28/Taisei_RSI_Local_Automation_v2_2026-10-28.zip",
+    "bundle_sha256": "c2252a50a18ebc350750596083e730abd9517c79e8cea2cd627404e4fc611b95",
+    "contents_file_count": 86,
+    "manifest_file_hashes": 85
+  },
+  "outcome": {
+    "offline_reproducibility": true,
+    "archived_native_arithmetic_verified": true,
+    "source_tests_passed": true,
+    "native_game_executed_this_turn": false,
+    "native_training_decisions_this_turn": 0,
+    "native_replay_executed_this_turn": false,
+    "real_rendered_game_video_captured": false,
+    "visual_gameplay_inspected": false,
+    "model_competence_gain_verified": false,
+    "champion_modified": false,
+    "sealed_seed_access": false
+  },
+  "next": "When exact authorized pinned Git checkout plus submodules/resources become available, restore canonical full repo, install Meson and SDL3 shared dependency, run local native smoke/determinism, E5 action/state replay, genuine rendered capture and visual inspection; only then select justified <=20k-decision RSI challenger, matched-seed evaluation and record failures. Scheduled automation should rematerialize saved bundle, run idempotently, and avoid repeated blocked-network attempts."
+}
