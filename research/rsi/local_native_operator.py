@@ -146,7 +146,9 @@ def checkout_status(checkout, lock):
 def policy_archive_paths(root):
     root = Path(root)
     # Use immutable local evidence when present; otherwise canonical escrow stages.
+    escrow = root / "research/rsi/evidence/escrow_e3_e4_20261026_v1"
     candidate = [(root / "archival_e3", root / "archival_e4"),
+                 (escrow / "e3", escrow / "e4"),
                  (root / "my_test/results/e3_artifact", root / "my_test/results/e4_artifact")]
     return next(((a, b) for a, b in candidate if a.is_dir() and b.is_dir()), candidate[0])
 
@@ -239,7 +241,7 @@ def doctor(root):
             "resources_available": (source / "resources").is_dir(), "missing_canonical_source_files": missing,
             "current_repo_branch": current_branch,
             "canonical_checkout_verified": current_branch == "research/rsi-automation-v1",
-            "offline_dataset_available": (root / "archival_e3/teacher_demonstrations_12000.npz").is_file(),
+            "offline_dataset_available": (policy_archive_paths(root)[0] / "teacher_demonstrations_12000.npz").is_file(),
             "native_ready": checkout["status"] == "verified" and bool(lib) and
                    (source / "resources").is_dir() and not missing and tools["meson"]
                    and current_branch == "research/rsi-automation-v1",
