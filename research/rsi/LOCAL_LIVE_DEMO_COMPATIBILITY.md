@@ -24,7 +24,7 @@ For legacy policy, the prior native renderer hardcodes an accepted policy-binary
 
 ## To validate a challenger rendered replay
 
-1. Obtain the actual new `.tsr` replay file (or captured video) and unrotated launch logs. At the time of this integration, no **new** challenger replay is attached to the conversation.
+1. **Automate the gameplay recording first.** When genuine renderer and policy loader are available, launch a bounded native development-seed game under the agent, save a *complete* `.tsr` recording and genuine video/frames where supported, plus unrotated loader/inference logs. Validate nonempty files before analysis. Do not routinely ask the user to play or record the game; only escalate specific unrecoverable source, credential or renderer-access blockers. See `REPLAY_VERIFICATION.md`.
 2. Verify the logged policy binary SHA-256, recognized magic, loader acceptance, run seed, stage/difficulty/shot, `RL decision` lines and outcome. The replay alone may not identify the checkpoint.
 3. Parse replay metadata and the exact input sequence; quantify survival duration, movement/actions, skill presses, action-change entropy, wall pinning proxies and outcome.
 4. Assess dodge/collect competence only with synchronized native bullet/item/player trajectories or video, not direction changes alone.
