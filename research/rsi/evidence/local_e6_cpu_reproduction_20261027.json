@@ -1,0 +1,68 @@
+{
+  "schema": "taisei_rsi_local_reproduction_v1",
+  "date_utc": "2026-10-27",
+  "canonical_branch": "research/rsi-automation-v1",
+  "experiment": "E6_EPISODE_DISJOINT_BC_LOCAL_CPU_REPRODUCTION",
+  "environment": {
+    "python": "3.13.5",
+    "torch": "2.10.0+cpu",
+    "numpy": "2.3.5",
+    "device": "CPU",
+    "github_actions_used": false
+  },
+  "inputs": {
+    "original_e3_artifact_id": 12609092648,
+    "original_e3_zip_sha256": "ecb660decee9706dd62c8a98023d0fe0979b578c24eb6a037c089f1014b169d1",
+    "original_e4_artifact_id": 12609314728,
+    "original_e4_zip_sha256": "1dc6ab9ffe7d5ab88d30c162246d0b2c7fe66c29556fb751b54886b4d2430789",
+    "teacher_demonstrations_sha256": "02dd11feb60e0dcb5710ae8af3cf33dca7e7e77756d6467f822ad94d0f5a0d8d",
+    "training_frames": 7857,
+    "heldout_partial_episode_frames": 4143
+  },
+  "execution": {
+    "six_e6_models_retrained_locally": true,
+    "initialization_seeds": [
+      48030,
+      48032,
+      48033
+    ],
+    "variants": [
+      "plain_ce",
+      "half_class_weighted_ce"
+    ],
+    "epochs": 16,
+    "local_e6_source_tests_passed": 6,
+    "identical_architecture": "legacy ActorCritic 528 input 18 movement actions 128 width",
+    "all_six_saved_checkpoint_sha256_bit_identical_to_archive": true,
+    "all_six_heldout_metrics_identical_to_archive": true,
+    "all_six_cpu_inference_passed": true,
+    "checkpoint_hashes": [
+      "9257f12fc850157f958e64563860d925df83b797f0a673b02f75f6e0437a5d80",
+      "b8de0e607682addf582a231a5ab8c6f1878aa4a6f80878fee6bde9527cd443b4",
+      "387ce57d016a01bb5c9c93818efc87d66129e9f59d6299268aecd82b6cf0032a",
+      "d9f248663a8f8e0991d8f04191b11897c2677dc583592229bfeebe8ee4e66fc2",
+      "74aebf0956683bf1b715fae19a3054d725c862a17e800818f5203c6ea0e3c99b",
+      "7d2d57f88ecb56ab9522fe5e35fe3892262756caf81bc2c07c96c131cb114ec2"
+    ]
+  },
+  "offline_additional_diagnostic": {
+    "heldout_teacher_nonavoid_stay_fraction_approximately": 0.7072,
+    "mean_teacher_movement_misclassified_as_stay": 0.29458642484198955,
+    "high_projectile_nonstay_to_stay_error_variable_across_model_seeds": true,
+    "interpretation": "offline action coverage and prediction-collapse proxy, not visual dodging or actual native gameplay"
+  },
+  "native_gate": {
+    "source_checkout_present": false,
+    "pinned_native_commit": "789200ff255c681b3ed4230a3f26f0b8c12c78fe",
+    "upstream_get_repo_error": "404",
+    "container_git_remote_error": "Could not resolve host github.com",
+    "meson_available": false,
+    "native_game_executed": false,
+    "native_ppo_steps": 0,
+    "genuine_replay_video_captured": false,
+    "visual_inspection_performed": false,
+    "gameplay_improvement_verified": false,
+    "promotion_allowed": false
+  },
+  "next_action": "Recover exact pinned native Git checkout and recursive submodules from authorized archive/git bundle; provide compatible full canonical repo, install Meson/build deps, compile real native library, smoke/determinism then bounded E5 replay/E3 challenger and genuine rendered recording inspection. Keep GitHub Actions disabled."
+}
