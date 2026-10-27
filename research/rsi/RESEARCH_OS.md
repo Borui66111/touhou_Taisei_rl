@@ -102,3 +102,16 @@ P5: RSI meta-level experiments: analyze history of succeeded/failed pivots, meas
 `research/rsi/trajectory/events.jsonl` is the **detailed, append-only evidence log**; UKS holds the **compact discoverable synthesis**: principles, source pointers, milestone snapshots, failed assumptions, evolving capabilities and meta-lessons. Link the Git revision/experiment ID for each nontrivial claim. Avoid copying all run logs into UKS. Keep open questions and bad outcomes visible, not erased by newer plans.
 
 Other persistent source-of-truth docs: `research/rsi/STATE.md`, `CHANGELOG.md`, `COMPETENCE_SPEC.md`. These documents guide decisions but do not replace measured training artifacts.
+
+
+## 9. Autonomous actual-game recording and visual replay review
+
+Every supported policy test must include an **automated play → record → verify → inspect → compare** cycle as specified in [REPLAY_VERIFICATION.md](REPLAY_VERIFICATION.md). This is a required evidence and troubleshooting capability, not a routine human manual review request.
+
+- Run the **genuine** game on development seeds with exact model/loader/engine identities. Record complete native action/state/terminal logs, a valid playable game replay and, when a compatible rendered native launcher exists, genuine MP4 or frame capture. A headless FFI rollout is not itself a rendered recording.
+- Automatically check replay/video contents and sync; reject header-only or empty captures (including the previous 44-byte .tsr). Replay native input/actions in an independent process; require complete seed/episode/terminal coverage.
+- Inspect available genuine video/frames, concentrating on collisions, dodging, wall pinning, pickups, boss transitions and resource actions; preserve timestamped examples of failure and success. Do **not** call input traces, charts or generated visuals true game footage.
+- If no genuine renderer/video or multimodal viewing is available, mark visual inspection **NOT EXECUTED**. Native telemetry can still support numerical game metrics but not claims of direct visual corroboration. Identify precisely the missing interface; attempt feasible automatic integration before requesting human review.
+- Use identical conditions and matched development seeds for policy-versus-baseline comparison. Never promote a model on video anecdotes or offline BC accuracy alone.
+
+Existing E3/E4 escrow artifacts are native checkpoints/logs/JSONL **without recorded MP4 or .tsr**, so previous native outcomes are not retroactively relabeled as visually inspected. Visual replay is an additional verification gate, not a claim that the original E3/E4 native measurements were fabricated.
