@@ -31,6 +31,14 @@ This invokes the branch's canonical `export_live_skill_ppo_v2.py`, validates bot
 
 See [W2CTRL.md](W2CTRL.md) for export and live-log audit, [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md) for the single controller contract, and [RESOURCE_RECOVERY.md](RESOURCE_RECOVERY.md) for missing renderer atlas diagnostics.
 
+**Replay integrity (observed failure on 2026-10-28):** Do not treat a `Saving ...tsr` log line or a distinct replay filename as proof of recorded gameplay. Two separately named files from local runs were **identical 44-byte TSR headers with empty compressed metadata and events**. `w2ctrl.py` now checks any saved replay attached to its fresh launcher manifest independently of the policy-loaded/decision log. If replay integrity fails, the CLI returns a nonzero status even when logged movement control was attributed. Test any exported file explicitly:
+
+```powershell
+py -3.9 .\scripts\w2ctrl.py replay-check 'C:\path\to\recording.tsr'
+```
+
+`invalid_empty_metadata_and_events` is a **recording failure**, not proof of bad gameplay. Save `%APPDATA%\taisei\log.txt` and the `taisei-live-ppo-*.json` manifest under `%LOCALAPPDATA%\hermes\cache\scratch` for debugging; preserve real MP4/PNG footage as a separate observable gameplay source. **User-observed E1 issue:** dodging and item collection are weak. Source inspection shows native item positions exist in the environment but are omitted from the 546-feature model vector, with no explicit item-pickup reward; see the research-branch failure diagnosis. A future item-aware experiment must version its feature semantics and update native/rendered encoders together while retaining the one `TSKILL2` live controller. Do **not** silently reinterpret existing E1 weights.
+
 **Your two local checkpoint paths — same command, same renderer:**
 
 ```powershell
