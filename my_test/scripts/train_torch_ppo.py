@@ -21,7 +21,10 @@ p.add_argument('--device',default='cpu')
 p.add_argument('--policy-type',choices=['legacy','skill'],default='legacy',
                help='legacy 528/18 policy (default) or skill-aware movement+skill policy')
 p.add_argument('--skill-action-mask',action='store_true',
-               help='Mask unavailable Bomb/Special choices for the skill policy')
+               help='Enable the legacy v2 skill action mask')
+p.add_argument('--skill-action-mask-version',choices=['taisei_skill_mask_v2_respawn',
+               'taisei_skill_mask_v3_surge_discharge'],
+               help='Explicit versioned skill action mask for new training')
 resume_group=p.add_mutually_exclusive_group()
 resume_group.add_argument('--init',help='Initialize model weights only from an earlier checkpoint')
 resume_group.add_argument('--resume',help='Resume model, optimizer, and cumulative training state')
@@ -35,4 +38,5 @@ cfg=EnvConfig(library_path=a.library,resource_path=a.resource_path,stage_id=a.st
 train(cfg,outfile=a.out,total_steps=a.steps,rollout_steps=a.rollout_steps,
       learning_rate=a.lr,seed=a.seed,device=a.device,gamma=a.gamma,init=a.init,
       resume=a.resume,resume_log=a.resume_log,log_path=a.log,
-      policy_type=a.policy_type,skill_action_mask=a.skill_action_mask)
+      policy_type=a.policy_type,skill_action_mask=a.skill_action_mask,
+      skill_action_mask_version=a.skill_action_mask_version)
