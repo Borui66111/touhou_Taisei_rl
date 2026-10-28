@@ -69,13 +69,14 @@
     }
   ],
   "tests": {
-    "source_tests_total": 25,
-    "portable_source_tests": 24,
+    "source_tests_total": 30,
+    "portable_source_tests": 29,
     "real_archived_e1_export_test": 1,
     "failures": 0,
     "independent_zip_extract_test": {
-      "passed": 24,
-      "skipped_real_e1_test": 1
+      "passed": 30,
+      "skipped_real_e1_test": 0,
+      "actual_archived_e1_model_from_extracted_zip": true
     },
     "synthetic_log_audit_includes_8_stage_session": true,
     "stale_log_and_wrong_checkpoint_rejection": true,
@@ -83,7 +84,14 @@
     "existing_output_overwrite_prevention": true,
     "real_windows_game_launched": false,
     "real_C_skill_v2_loader_inference_compared": false,
-    "recorded_gameplay_inspected": false
+    "recorded_gameplay_inspected": false,
+    "additional_fail_closed_checks": [
+      "policy-loaded event must precede stage run",
+      "native seed field must be valid",
+      "at least one accepted decision per run",
+      "frame indices must increase",
+      "terminal outcome must have a value"
+    ]
   },
   "branch_changes": {
     "main_modified": false,
@@ -102,13 +110,16 @@
       "21c2efff2fde17b46d7c9ce2d66e702bbca66f55",
       "fc464ab7636d3aaff829b9cd1402f786fb1d1b49",
       "f5322d68e785a1a3cb92bfb3aa500882b4c1a45c",
-      "d6a33ae39e90f880003b048c0eb0a7b6e573df61"
+      "d6a33ae39e90f880003b048c0eb0a7b6e573df61",
+      "7733c1f1d4d30a263b85fb176f4dc5b83cabf810",
+      "0ccad6196cef7204efa7e283c18ad54d72f77c28",
+      "3078822531fb0c3588c939b1c183811b9e92e616"
     ]
   },
   "bundle": {
     "library_path": "/AI/Taisei_W2CTRL_2026-10-28/Taisei_W2CTRL_Validated_2026-10-28.zip",
-    "sha256": "e67e9aee9917794ee7fa4b91c6689ebdcf715883442393e130fee24323dff16d",
-    "bytes": 2529051,
+    "sha256": "6fb950209b2ce13abdb9d52e477494663367f90c911af697094598922e75f7f2",
+    "bytes": 2529448,
     "model_inclusion": [
       "E1 challenger .pt and TSKILL2 bin",
       "E1 control .pt and TSKILL2 bin"
