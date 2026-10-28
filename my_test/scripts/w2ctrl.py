@@ -409,7 +409,7 @@ def demo(checkpoint: Path, *, policy: Path | None = None, renderer: str = "gl33"
 def main(argv=None) -> int:
     p=argparse.ArgumentParser(description=__doc__)
     sub=p.add_subparsers(dest="command",required=True)
-    exp=sub.add_parser("prepare",help="export verified 546x18+3 skill PT to canonical TSKILL2")
+    exp=sub.add_parser("prepare",help="export one TSKILL2 from verified 546-skill or 528-legacy PT")
     exp.add_argument("checkpoint",type=Path);exp.add_argument("output",type=Path)
     exp.add_argument("--expected-sha256")
     inspect=sub.add_parser("inspect",help="validate canonical TSKILL2 binary metadata")
