@@ -1,5 +1,19 @@
 # Taisei native RL — Windows / WSL2
 
+## Live demo from a trusted skill-policy `.pt` (w2ctrl)
+
+After pulling `feat/native-rl-workbench` and ensuring your *existing* `rl_skill_v2` Windows game build and resources are still present, you can convert and launch a **compatible new research checkpoint** in one command, from `my_test`:
+
+```powershell
+py -3.9 .\scripts\w2ctrl.py demo "C:\path\to\new-experiment.pt" --renderer gl33
+```
+
+This invokes the branch's canonical `export_live_skill_ppo_v2.py`, validates both movement and skill heads, exports a SHA-bound `TSKILL2` binary under `results/w2ctrl/`, launches the existing Windows Taisei executable, and audits the fresh game log. **Enter a stage via the game menu**. A game log establishes controller acceptance only; it does not establish a playable replay, visual inspection, or improved gameplay competence. Results and audit files are kept under `results/w2ctrl/` by default. The workflow does not compile or install the game.
+
+**Compatibility gate:** The checkpoint must be a `SkillActorCritic` with 546 inputs, 128 hidden units, 18 movement actions, 3 skill actions, and the `taisei_skill_mask_v2_respawn` mask version. Movement-only 528-input `TPPOv1` and older/unmasked skill models cannot silently convert to this runtime. The tested model `e1_challenger_seed48020.pt` is compatible; any future `.pt` must pass the same checks. For optional model provenance, use `--expected-sha256 EXPECTED_DIGEST`. Never load an untrusted `.pt` (PyTorch serialization can execute code).
+
+See [W2CTRL.md](W2CTRL.md) for separate export, binary inspection, source tests and diagnosis.
+
 **Game choice:** open-source [Taisei](https://github.com/taisei-project/taisei) and the `taisei-sim` headless version of its native game logic; this is not a hand-made toy game.
 
 **Platform note:** the upstream headless build documents GNU/Linux support; WSL2 Ubuntu is the optional route for headless training below. Separately, this local `my_test` workbench contains experimental Windows rendered-game builds and a PPO export. They are not automatically present in a fresh Git clone or remote collaboration copy, and do not establish official Windows headless support, parity, or performance.
