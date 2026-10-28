@@ -1,0 +1,67 @@
+{
+  "schema": "taisei_live_controller_conversion_e4_v1",
+  "timestamp_utc": "2026-10-28T07:48:00Z",
+  "branch": "research/rsi-automation-v1",
+  "model": {
+    "name": "e4_weighted_bc_seed48030.pt",
+    "sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc",
+    "family": "legacy_movement_BC",
+    "input_features": 528,
+    "movement_actions": 18,
+    "skill_actions": 0
+  },
+  "export": {
+    "name": "e4_weighted_bc_seed48030_TPPOv1.bin",
+    "format": "TPPOv1",
+    "size_bytes": 346236,
+    "sha256": "af96b9f2e1fef76f9bc6a0a617cf296841fbf3861870d9b8a6d4b02a05ef3b13",
+    "embedded_checkpoint_sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc"
+  },
+  "game_patch": {
+    "path": "research/rsi/evidence/e4_weighted_bc_TPPOv1_live_controller.patch",
+    "commit": "0af4e7c83d27ff2d230401b1a0afbfb54c831444",
+    "note": "Prepared from authentic legacy patch, replacing only binary+checkpoint hardcoded hashes; game rebuild and runtime verification still required."
+  },
+  "local_bundle": {
+    "library_path": "/AI/Taisei_Live_Control_2026-10-28/Taisei_E4_Ready_Live_Control_2026-10-28.zip",
+    "zip_sha256": "a34c00208d9508ede7a28bc410c1c276b0daf8f9898bd20b2749fd12f2a31894",
+    "zip_bytes": 1586050,
+    "contains": [
+      "models/e4_weighted_bc_seed48030.pt",
+      "models/e4_weighted_bc_seed48030_TPPOv1.bin",
+      "models/e1_challenger_seed48020.pt",
+      "tools/launch_legacy_live.py",
+      "tools/run_native_pt.py",
+      "tools/prepare_e4_live_patch.py",
+      "tools/patch_legacy_loader_pin.py",
+      "tests/live_ppo_infer.h",
+      "tests/infer_harness.c",
+      "tests/test_live_conversion.py",
+      "README_LIVE_CONTROL.md",
+      "RUN_E4_LIVE_WINDOWS.ps1",
+      "MANIFEST_SHA256.json"
+    ]
+  },
+  "tests": {
+    "source_tests_passed": 9,
+    "source_tests_failed": 0,
+    "c_vs_pytorch_vectors": 3,
+    "archive_independently_extracted": true,
+    "sha256_manifest_verified": true,
+    "tested_bad_file_rejection": true,
+    "tested_fake_or_stale_game_log_rejection": true,
+    "tested_missing_simulator_fail_closed": true,
+    "tested_sealed_seeds_rejection": true
+  },
+  "limitations": {
+    "genuine_native_game_executed": false,
+    "rendered_game_executed": false,
+    "live_game_control_confirmed": false,
+    "rendered_replay_captured": false,
+    "visual_review_performed": false,
+    "model_competence_gain_verified": false,
+    "skill_v2_format_known": false,
+    "reason": "Pinned touhourl/taisei-sim source inaccessible here, real rendered game executable unavailable; user's existing rl_skill_v2 expects undocumented TSKILL2, not TPPOv1."
+  },
+  "next_action": "Build a matching genuine legacy-patched rendered executable locally; run launcher with this binary and source pin; require matching RL policy loaded and nonzero RL decision logs, then record complete rendered gameplay and match a native development-seed baseline. For skill E1 on the existing rl_skill_v2 demo, retrieve actual TSKILL2 loader source plus known-good export before implementing exporter."
+}
