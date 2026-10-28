@@ -1,0 +1,117 @@
+{
+  "schema": "taisei_e1_manual_failure_and_second_empty_replay_20261028_v1",
+  "date_sgt": "2026-10-28",
+  "observations": {
+    "provenance": "user manual real rendered-game observation, not independently inspected video",
+    "policy_assumed": "E1 skill-aware challenger per immediately preceding user test context; actual matching loader event log not supplied",
+    "reported_failures": [
+      "fails to dodge incoming bullets",
+      "does not move toward collectible items"
+    ],
+    "quantified_collisions": null,
+    "quantified_pickups": null,
+    "renderer_verified_policy_sha": null
+  },
+  "replay": {
+    "new_filename": "taisei_20261028_17-33-21-938_stg1_reimuA_easy.tsr",
+    "previous_filename": "taisei_20261028_16-34-53-521_stg1_reimuA_easy.tsr",
+    "new_bytes": 44,
+    "previous_bytes": 44,
+    "sha256": "3eb7427f4c3372d997c3718c699803c16bb42fead5a0f644ff800bed48958943",
+    "byte_identical_to_previous_failed_replay": true,
+    "magic_valid": true,
+    "format_v14_compressed": true,
+    "game_version_raw": [
+      1,
+      5,
+      0,
+      0,
+      0
+    ],
+    "events_offset": 34,
+    "compressed_sections": {
+      "metadata": {
+        "section_bytes": 13,
+        "starts_with_empty_zstd_frame": true,
+        "prefix_decompression_exit": 0,
+        "decompressed_prefix_bytes": 0,
+        "trailing_bytes_hex": "00000000"
+      },
+      "events": {
+        "section_bytes": 10,
+        "starts_with_empty_zstd_frame": true,
+        "prefix_decompression_exit": 0,
+        "decompressed_prefix_bytes": 0,
+        "trailing_bytes_hex": "69"
+      }
+    },
+    "valid_playable_replay": false,
+    "gameplay_events_available": false,
+    "root_cause": "unknown; two repeated empty outputs are consistent with an uninitialized/not-populated replay writer, but logs/source must establish mechanism"
+  },
+  "policy_source_audit": {
+    "canonical_branch": "research/rsi-automation-v1",
+    "source_files": [
+      "my_test/native_rl/env.py",
+      "my_test/native_rl/torch_ppo.py"
+    ],
+    "native_environment_emits_items": true,
+    "items_include_relative_xy_and_item_type": true,
+    "skill_features_includes_items": false,
+    "input_features": 546,
+    "reward_components": [
+      "survival frames",
+      "graze delta",
+      "boss recent damage",
+      "death penalty",
+      "win bonus",
+      "loss penalty"
+    ],
+    "explicit_pickup_reward": false,
+    "grounded_mechanism": "Pickup-location observation is discarded before the policy; it cannot condition actions on actual item positions. Pickup is not an explicit reward term."
+  },
+  "checkpoint_probe": {
+    "model_sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+    "model_architecture": {
+      "input_dim": 546,
+      "actions": 18,
+      "skills": 3,
+      "policy_type": "skill",
+      "skill_action_mask_version": "taisei_skill_mask_v2_respawn",
+      "steps": 20000
+    },
+    "test_kind": "synthetic_observation_feature_contract_only",
+    "feature_width": 546,
+    "items_changed": true,
+    "item_position_input_changed": false,
+    "movement_logits_identical_when_only_items_change": true,
+    "skill_logits_identical_when_only_items_change": true,
+    "projectile_control_feature_changed": true,
+    "projectile_control_move_logit_max_delta": 0.05359739065170288,
+    "interpretation": "The 546-feature native E1 input intentionally omits items despite native obs containing them; this is not a live Taisei trajectory test."
+  },
+  "competing_dodge_hypotheses": [
+    "Insufficient diverse native training/examples for high-density threats",
+    "Reward/exploration inadequacy despite survival reward",
+    "Mismatch between native 546-feature construction and live C loader feature order/scaling",
+    "Bad selected actions/mask or rendering-game parity"
+  ],
+  "next_preregistered_gates": [
+    "Verify actual rendered game policy-loaded SHA, accepted frame-indexed decisions and model identity",
+    "Diagnose replay writer lifecycle against game logs: replay recording initialized, events populated, stage terminal/Save call and path",
+    "Capture genuine rendered MP4 or PNG frames even if .tsr remains invalid",
+    "Compare C live and native feature vectors/order/scaling on identical state; reject mismatches before attributing skill",
+    "Design versioned item-aware 546-input observation layout under same sole TSKILL2 controller; update native and C loader jointly and require schema handshake",
+    "Add verified pickup telemetry and survival-safe pickup reward; benchmark against same-seed baseline and hazards",
+    "Collect diverse hazard-specific teacher episodes and train bounded skill-v2 challenger with outcome/replay inspection"
+  ],
+  "unverified": [
+    "why replay writer is empty",
+    "actual stage outcome",
+    "actual hit/death count",
+    "actual pickup count",
+    "actual policy model running during observed gameplay",
+    "true C/native observation parity",
+    "fresh training/learned competence improvement"
+  ]
+}
