@@ -1,0 +1,118 @@
+{
+  "schema": "taisei_w2ctrl_main_source_comparison_v1",
+  "date_sgt": "2026-10-28",
+  "user_request": "Compare uploaded actual Git main live-control scripts against previously prepared integration, and push validated w2ctrl scripts.",
+  "authority": {
+    "main_head_inspected": "fd0376f6ca2e63071bb1d0ef07780f349b670614",
+    "selected_writable_branch": "research/rsi-automation-v1"
+  },
+  "source_comparison": {
+    "main_skill_exporter": {
+      "path": "my_test/scripts/export_live_skill_ppo_v2.py",
+      "git_blob_sha1": "c54158611b5e0a145620733fc24e99612b3e5329",
+      "copied_exact_to_branch": true,
+      "local_file_git_blob_rechecked": true
+    },
+    "main_windows_launcher": {
+      "path": "my_test/scripts/run_live_ppo_windows.py",
+      "git_blob_sha1": "9280be78511a389e407c71684ce34efce63193a0",
+      "copied_exact_to_branch": true,
+      "source_reviewed": true
+    },
+    "old_legacy_integration": {
+      "path": "my_test/patches/live-ppo.patch",
+      "format": "TPPOv1",
+      "input_features": 528,
+      "output_actions": 18,
+      "compatible_with_skill_v2": false
+    },
+    "new_skill_contract": {
+      "magic_ascii": "TSKILL2\\0",
+      "header_bytes": 48,
+      "metadata": "canonical UTF-8 JSON with SHA256",
+      "payload": "little-endian float32, 8 ordered tensors, no critic",
+      "input_features": 546,
+      "hidden_width": 128,
+      "movement_actions": 18,
+      "skill_actions": 3,
+      "mask_version": "taisei_skill_mask_v2_respawn"
+    },
+    "observed_runner_gap": "Current main run_live_ppo_windows.py reports matching attribution only when exactly one stage run is present; README_WINDOWS.md describes a prior 8-run, 5461-decision worker-local rendered session. Its process return code alone does not prove policy loaded. w2ctrl validates fresh manifest and independently checks multi-run policy-loaded/run/decision/outcome sequences.",
+    "main_readme_evidence_classification": "user/worker-reported Windows rendered policy acceptance in main README, not a run independently executed or video inspected by this assistant"
+  },
+  "actual_checkpoints": [
+    {
+      "name": "e1_challenger_seed48020.pt",
+      "sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+      "steps": 20000,
+      "format": "SkillActorCritic 546/18+3 maskv2",
+      "exported_bin_sha256": "63e1acc2b27aa74bb766f079061b2f1b3e0e13097a4f885fcfc8396c14c53423",
+      "bytes": 357347,
+      "parity_vectors": 16,
+      "max_abs_logit_difference": 4.76837158203125e-7
+    },
+    {
+      "name": "e1_control_seed48020.pt",
+      "sha256": "5cf7eb84b6a8c56825c25527162691179c057850963e38178d4dbe3fe51d995f",
+      "steps": 20000,
+      "format": "SkillActorCritic 546/18+3 maskv2",
+      "exported_bin_sha256": "c7cc6d0e9238960f0a32a4a7ee190a117713d056918bdf484abc080e781100a2",
+      "bytes": 357347,
+      "parity_vectors": 16,
+      "max_abs_logit_difference": 3.5762786865234375e-7
+    },
+    {
+      "name": "e4_weighted_bc_seed48030.pt",
+      "sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc",
+      "format": "legacy 528/18 no skills",
+      "export_result": "rejected_legacy_architecture_by_main_skill_exporter"
+    }
+  ],
+  "tests": {
+    "source_tests_total": 25,
+    "portable_source_tests": 24,
+    "real_archived_e1_export_test": 1,
+    "failures": 0,
+    "independent_zip_extract_test": {
+      "passed": 24,
+      "skipped_real_e1_test": 1
+    },
+    "synthetic_log_audit_includes_8_stage_session": true,
+    "stale_log_and_wrong_checkpoint_rejection": true,
+    "sealed_development_seed_violation_detection": true,
+    "existing_output_overwrite_prevention": true,
+    "real_windows_game_launched": false,
+    "real_C_skill_v2_loader_inference_compared": false,
+    "recorded_gameplay_inspected": false
+  },
+  "branch_changes": {
+    "main_modified": false,
+    "canonical_branch": "research/rsi-automation-v1",
+    "files": [
+      "my_test/scripts/export_live_skill_ppo_v2.py",
+      "my_test/scripts/run_live_ppo_windows.py",
+      "my_test/scripts/w2ctrl.py",
+      "my_test/scripts/RUN_W2CTRL_WINDOWS.ps1",
+      "my_test/tests/test_w2ctrl.py",
+      "my_test/W2CTRL.md"
+    ],
+    "commit_sequence": [
+      "8bd871cf2063998c7397f6e35fbd37efcd058cd0",
+      "c8a7dec9ac6209769a6d48704fb4a9ffe079e3b8",
+      "21c2efff2fde17b46d7c9ce2d66e702bbca66f55",
+      "fc464ab7636d3aaff829b9cd1402f786fb1d1b49",
+      "f5322d68e785a1a3cb92bfb3aa500882b4c1a45c",
+      "d6a33ae39e90f880003b048c0eb0a7b6e573df61"
+    ]
+  },
+  "bundle": {
+    "library_path": "/AI/Taisei_W2CTRL_2026-10-28/Taisei_W2CTRL_Validated_2026-10-28.zip",
+    "sha256": "e67e9aee9917794ee7fa4b91c6689ebdcf715883442393e130fee24323dff16d",
+    "bytes": 2529051,
+    "model_inclusion": [
+      "E1 challenger .pt and TSKILL2 bin",
+      "E1 control .pt and TSKILL2 bin"
+    ]
+  },
+  "next_verification": "On user's actual existing Windows rl_skill_v2 Taisei build, launch one or more development-seed stages using w2ctrl. Preserve fresh log manifest with matched E1 checksum, action decisions, completed outcome and replay file, validate replay playability by genuine Taisei and inspect rendered footage before any gameplay-learning claim. Headless simulator source remains separately unavailable here."
+}
