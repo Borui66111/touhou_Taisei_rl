@@ -8,6 +8,7 @@ param(
   [string]$Policy = "",
   [switch]$Launch,
   [string]$Renderer = "gl33",
+  [string]$Resources = "",
   [string]$ExpectedSha256 = ""
 )
 $ErrorActionPreference = 'Stop'
@@ -33,7 +34,9 @@ if ($ExpectedSha256) {$argv += @('--expected-sha256', $ExpectedSha256)}
 & $python @prefix @argv
 if ($LASTEXITCODE -ne 0) {throw 'Policy export/verification failed; no game launched.'}
 if ($Launch) {
-  & $python @prefix $scriptFile 'run' $policyFull '--renderer' $Renderer
+  $runArgs = @($scriptFile, 'run', $policyFull, '--renderer', $Renderer)
+  if ($Resources) {$runArgs += @('--resources', $Resources)}
+  & $python @prefix @runArgs
   if ($LASTEXITCODE -ne 0) {throw 'No verified live-control attribution; inspect the new launcher manifest and game logs.'}
 } else {
   Write-Host ('Validated export: ' + $policyFull)
