@@ -1,0 +1,62 @@
+{
+  "schema": "taisei_w2ctrl_single_controller_user_failure_v1",
+  "date_sgt": "2026-10-28",
+  "user_report": {
+    "command": "py -3.9 .\\scripts\\w2ctrl.py demo .\\res\\ckpt\\Taisei_E4_2026-10-28\\models\\e1_challenger_seed48020.pt --renderer gl33",
+    "error": "Required atlas portraits could not be loaded from .../portraits.tsatlas.zst",
+    "nonfatal_warning": "Failed to activate VS environment: Could not parse vswhere.exe output",
+    "model_conversion": "already_identical; inference parity verified",
+    "source_checkpoint_sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+    "tskill2_policy_sha256": "63e1acc2b27aa74bb766f079061b2f1b3e0e13097a4f885fcfc8396c14c53423",
+    "game_binary_sha256": "d849e5df67d791e253ea380dc1ddb13b18f3750c3cf70c3253bc143d162b69fd",
+    "observed_policy_loaded": 0,
+    "observed_decisions": 0,
+    "observed_stage_runs": 0,
+    "observed_replay": false,
+    "windows_exit_status_unsigned": 4294967295
+  },
+  "root_cause": "Rendered Taisei initialization could not load required portraits.tsatlas.zst in configured resource tree; not a PT model failure. Launcher previously hardcoded windows-build/wlive_agent_demo/resources without validating required atlas.",
+  "second_user_correction": "There must be exactly one live controller and RL policy interface; historic E4 movement-only checkpoint must be compatible with the current skill-v2 rendered controller, and all future training must use the same current format.",
+  "remediation": {
+    "only_runtime": "rl_skill_v2 / TSKILL2 / 546 input / 18 movement + 3 skill / taisei_skill_mask_v2_respawn",
+    "historical_adapter": "legacy528_prefix_zero_pad_skill_none_v1",
+    "adapter_semantics": "Move the original 128x528 first-layer weights to the prefix of a 128x546 layer; zero-fill 18 suffix weights; copy rest of movement+critic network exactly; fixed skill head weight=0, biases=[0,-1000000,-1000000] so no bombs or special actions learned or requested.",
+    "adapter_source_checkpoint_sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc",
+    "adapted_checkpoint_sha256_in_current_cpu_environment": "2c6d24ea88419f3c36af167cddffa5a3fe83eb29152d641cb9786f62d3dd13f6",
+    "adapted_tskill2_policy_sha256_in_current_cpu_environment": "0ab65a73fd5f6d6b71be83d89a001bfee0f05e69e0b90ca37e6a21422ffb76c1",
+    "adapter_movement_parity_max_abs_diff": 0.0000019073486328125,
+    "atlas_doctor": "my_test/scripts/taisei_resource_doctor.py",
+    "game_preflight": "my_test/scripts/run_live_ppo_windows.py and w2ctrl.py refuse missing atlas before spawning the game; optional --resources complete matching build root",
+    "training_default": "my_test/scripts/train_torch_ppo.py now allows only skill-v2 with masked skills; no unsupported skill_action_mask_version kwarg",
+    "documentation": [
+      "my_test/README_WINDOWS.md",
+      "my_test/W2CTRL.md",
+      "my_test/LIVE_POLICY_CONTRACT.md",
+      "my_test/RESOURCE_RECOVERY.md"
+    ]
+  },
+  "verification": {
+    "regression_tests_passed": 68,
+    "source_and_e1_e4_archived_model_cases": true,
+    "independent_zip_hash_manifest_entries": 18,
+    "independent_zip_tests_passed": 68,
+    "independent_cli_e4_prepare_passed": true,
+    "original_e1_binary_sha_unchanged": true,
+    "real_windows_game_reexecuted": false,
+    "gameplay_loaded_after_asset_fix": false,
+    "rendered_replay_inspected": false
+  },
+  "branch_policy": {
+    "user_authorized_existing_feat_branch": "feat/native-rl-workbench",
+    "canonical_research_branch": "research/rsi-automation-v1",
+    "both_synced": true,
+    "main_unchanged": true
+  },
+  "limitations": [
+    "The original renderer binary and real compiled assets are only on the user's Windows workstation; assistant cannot independently verify which resource root contains the atlas or whether rebuilding assets fixes runtime.",
+    "E4 movement architecture was adapted for ABI compatibility, not trained for skill use and not proven in gameplay.",
+    "A resource-file existence check is not proof that all game resources or replay handling are correct.",
+    "Python/PyTorch versus NumPy parity and synthetic log tests do not certify compiled C skill-v2 loader parity or visual competence."
+  ],
+  "next": "User pulls updated feat branch, runs taisei_resource_doctor.py, supplies a verified matching compiled root if required, then runs identical w2ctrl demo command for E1/E4; preserve fresh actual loader/action and replay evidence for visual assessment."
+}
