@@ -1,0 +1,51 @@
+{
+  "schema": "taisei_uploaded_replay_independent_validation_v1",
+  "date_sgt": "2026-10-28",
+  "source": "user supplied original Taisei .tsr, independently read in assistant local Linux container",
+  "replay": {
+    "filename": "taisei_20261028_16-34-53-521_stg1_reimuA_easy.tsr",
+    "size_bytes": 44,
+    "sha256": "3eb7427f4c3372d997c3718c699803c16bb42fead5a0f644ff800bed48958943",
+    "magic": "hono❤umi",
+    "format_version": 14,
+    "compression": "zstd",
+    "game_version_raw": [
+      1,
+      5,
+      0,
+      0,
+      0
+    ],
+    "events_offset": 34,
+    "metadata_section_bytes": 13,
+    "events_section_bytes": 10,
+    "metadata_first_9_byte_zstd_frame_decompressed_bytes": 0,
+    "events_first_9_byte_zstd_frame_decompressed_bytes": 0,
+    "zstd_returncode_each_empty_frame": 0,
+    "metadata_suffix_bytes": 4,
+    "events_suffix_bytes": 1,
+    "structural_status": "invalid_empty_metadata_and_events",
+    "real_gameplay_events_found": false,
+    "replay_playability_verified": false,
+    "visual_review_performed": false,
+    "root_cause": "unknown_from_file_alone"
+  },
+  "checkpoint_to_inspect": {
+    "name": "e1_challenger_seed48020.pt",
+    "sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+    "bytes": 1099544,
+    "policy_type": "SkillActorCritic",
+    "input_features": 546,
+    "movement_actions": 18,
+    "skill_actions": 3,
+    "mask": "taisei_skill_mask_v2_respawn",
+    "training_steps": 20000,
+    "tskill2_bin_sha256": "63e1acc2b27aa74bb766f079061b2f1b3e0e13097a4f885fcfc8396c14c53423"
+  },
+  "comparison": {
+    "name": "e1_control_seed48020.pt",
+    "sha256": "5cf7eb84b6a8c56825c25527162691179c057850963e38178d4dbe3fe51d995f"
+  },
+  "interpretation": "Replay has correct header but Zstandard empty-frame prefixes for both metadata and events. This is not a playable recording and cannot be used to inspect policy movement, bullet dodges, skills or stage outcomes; filename must not be treated as gameplay evidence. Renderer crash remains a possible but unproven cause. No genuine Windows Taisei renderer/game executable is accessible in current assistant container.",
+  "next": "Fix actual Windows atlas resources, launch E1 with W2CTRL, preserve fresh game log + run manifest, verify accepted policy decisions and complete nonempty TSR; capture authentic video/frames and send results for visual diagnosis. Do not touch sealed seeds 43000–43099."
+}
