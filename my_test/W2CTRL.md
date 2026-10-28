@@ -44,7 +44,7 @@ The launcher opens the real game; **enter a stage through the menu**. `w2ctrl.py
 
 ### Why a separate W2CTRL verifier?
 
-The current `main` Windows launcher recognizes a **single** run sequence for its `attribution = matched` status. Its README documents **8** run records and **5,461** decisions in a local session. W2CTRL checks multiple independently ordered `RL run` / `RL decision` / `RL policy outcome` segments with a matching checkpoint SHA and avoids using historic log entries. Its tests use **synthetic log fixtures only**; they do not prove the actual game ran here.
+The current `main` Windows launcher recognizes a **single** run sequence for its `attribution = matched` status. Its README documents **8** run records and **5,461** decisions in a local session. W2CTRL checks multiple independently ordered `RL run` / `RL decision` / `RL policy outcome` segments with a matching checkpoint SHA and avoids using historic log entries. Its tests use **synthetic log fixtures only** (including out-of-order loads, missing seeds, rejected decisions, and nonmonotonic frames); they do not prove the actual game ran here.
 
 ### Evidence levels and remaining gates
 
@@ -65,6 +65,6 @@ From a fresh source checkout (CPU PyTorch, NumPy):
 py -3.9 -m unittest discover -s .\tests -p test_w2ctrl.py -v
 ```
 
-The portable suite generates its own **synthetic model fixture**. For the *actual* archived E1 checkpoint test, set `TAISEI_E1_PT` to the trusted local checkpoint path first; this adds one integration test with the exact expected binary SHA.
+The 29 portable tests generate their own **synthetic model fixture**. For the *actual* archived E1 checkpoint test, set `TAISEI_E1_PT` to the trusted local checkpoint path first; this adds one integration test with the exact expected binary SHA (30/30 passed in the local full test).
 
 Source tests do not establish Windows game integration; do not mark the full game pipeline complete until an actual run and visual verification have been inspected.
