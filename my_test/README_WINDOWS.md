@@ -2,6 +2,8 @@
 
 ## Live demo from a trusted skill-policy `.pt` (w2ctrl)
 
+**Single-control design:** There is only **one** supported rendered RL policy runtime: `rl_skill_v2` with `TSKILL2`, 546 input features, 18 movement actions + 3 skill actions, and `taisei_skill_mask_v2_respawn`. The 528-feature historical E4 model is **adapted to this format** without altering its trained movement behavior; it always selects skill `None`. New models trained with `scripts/train_torch_ppo.py` now use the full 546-feature skill-v2 design by default. See [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md).
+
 Update your existing **Windows workbench** checkout first. The prebuilt `rl_skill_v2/src/taisei.exe`, Meson environment and game resources must already exist locally; `git pull` does **not** download or rebuild them.
 
 ```powershell
@@ -25,9 +27,21 @@ py -3.9 -m unittest discover -s .\tests -p test_w2ctrl.py -v
 
 This invokes the branch's canonical `export_live_skill_ppo_v2.py`, validates both movement and skill heads, exports a SHA-bound `TSKILL2` binary under `results/w2ctrl/`, launches the existing Windows Taisei executable, and audits the fresh game log. **Enter a stage via the game menu**. A game log establishes controller acceptance only; it does not establish a playable replay, visual inspection, or improved gameplay competence. Results and audit files are kept under `results/w2ctrl/` by default. The workflow does not compile or install the game.
 
-**Compatibility gate:** The checkpoint must be a `SkillActorCritic` with 546 inputs, 128 hidden units, 18 movement actions, 3 skill actions, and the `taisei_skill_mask_v2_respawn` mask version. Movement-only 528-input `TPPOv1` and older/unmasked skill models cannot silently convert to this runtime. The tested model `e1_challenger_seed48020.pt` is compatible; any future `.pt` must pass the same checks. For optional model provenance, use `--expected-sha256 EXPECTED_DIGEST`. Never load an untrusted `.pt` (PyTorch serialization can execute code).
+**Compatibility gate:** Native 546-input/18+3 skill-v2 checkpoints export directly. Historical **528-input E4 movement-only `.pt`** checkpoints are accepted only through a verified 528→546 zero-padding adapter that fixes Bomb/Special to `None`, with source and derived checkpoint hashes recorded. The game always loads `TSKILL2`: there is **no second live controller**. Unsupported architectures or mask versions fail closed. The original E4 checkpoint is unchanged. For optional provenance, use `--expected-sha256 EXPECTED_DIGEST`. Never load an untrusted `.pt` (PyTorch serialization can execute code).
 
-See [W2CTRL.md](W2CTRL.md) for separate export, binary inspection, source tests and diagnosis.
+See [W2CTRL.md](W2CTRL.md) for export and live-log audit, [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md) for the single controller contract, and [RESOURCE_RECOVERY.md](RESOURCE_RECOVERY.md) for missing renderer atlas diagnostics.
+
+**Your two local checkpoint paths — same command, same renderer:**
+
+```powershell
+# E1 skill-aware checkpoint (direct TSKILL2 export)
+py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e1_challenger_seed48020.pt' --renderer gl33
+
+# E4 historical movement-only checkpoint (adapted to skill-v2; skills disabled)
+py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e4_weighted_bc_seed48030.pt' --renderer gl33
+```
+
+**If Taisei reports `Required atlas portraits could not be loaded`:** the error is a game **resource initialization failure**, not a model architecture failure. The launcher now checks the atlas before starting. Run `py -3.9 .\scripts\taisei_resource_doctor.py` to locate a valid compiled resource root; if necessary, supply `--resources 'C:\actual\matching\game\resources'` (replace with a verified real path). If none contains the atlas, rebuild/regenerate matching game assets first. The separate `vswhere.exe` warning did not cause the observed fatal atlas error. Do not copy assets from an unrelated game revision.
 
 **Game choice:** open-source [Taisei](https://github.com/taisei-project/taisei) and the `taisei-sim` headless version of its native game logic; this is not a hand-made toy game.
 
