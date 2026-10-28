@@ -13,6 +13,8 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
+from taisei_resource_doctor import select_resources
+
 
 ROOT = Path(__file__).resolve().parents[1]
 DRY_RUN_MARKER = "TAISEI_LIVE_PPO_DRY_RUN_OK"
@@ -241,7 +243,7 @@ def _create_run_manifest(plan):
     manifest = {"run_id": run_id, "status": "running", "started_at": datetime.now(timezone.utc).isoformat(),
                 "argv": plan["meson_argv"], "game_argv": plan["game_argv"], "paths": paths,
                 "sha256": {"game": _sha256(game), "policy": _sha256(policy)},
-                "policy_metadata": _policy_metadata(policy), "log_capture": {"path": str(log_path), "status": "pending",
+                "policy_metadata": _policy_metadata(policy), "resource_preflight": plan["resource_preflight"], "log_capture": {"path": str(log_path), "status": "pending",
                     "initial_identity": snapshot["identity"], "initial_size": snapshot["size"]}}
     _write_manifest_exclusive(manifest_path, manifest)
     return manifest_path, manifest, snapshot
@@ -277,11 +279,18 @@ def _child_code(paths, renderer, dry_run=False):
     return runtime_setup + _child_wait_code(game_argv)
 
 
-def _build_plan(policy, renderer="gl33", dry_run=False):
+def _build_plan(policy, renderer="gl33", dry_run=False, resources=None):
     policy_path = Path(policy)
     if not policy_path.is_absolute():
         policy_path = ROOT / policy_path
-    required_paths = {**PATHS, "policy": policy_path}
+    override = None
+    if resources is not None:
+        override = Path(resources)
+        if not override.is_absolute():
+            override = ROOT / override
+    resource_root, resource_preflight = select_resources(
+        ROOT, PATHS["resources"], override)
+    required_paths = {**PATHS, "resources": resource_root, "policy": policy_path}
     missing = []
     for name, path in required_paths.items():
         if not path.exists():
@@ -300,6 +309,7 @@ def _build_plan(policy, renderer="gl33", dry_run=False):
     child_code = _child_code(paths, renderer, dry_run=dry_run)
     return {
         "dry_run": dry_run,
+        "resource_preflight": resource_preflight,
         "verified_paths": {name: str(path) for name, path in paths.items()},
         "game_argv": game_argv,
         "meson_argv": [
@@ -332,6 +342,10 @@ def main(argv=None):
         help="PPO policy file; relative paths are resolved from the my_test directory",
     )
     parser.add_argument(
+        "--resources",
+        help="optional compiled resource root; checked for portraits.tsatlas.zst",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="verify runtime paths through Meson without starting Taisei",
@@ -342,8 +356,9 @@ def main(argv=None):
             policy=args.rl_policy,
             renderer=args.renderer,
             dry_run=args.dry_run,
+            resources=args.resources,
         )
-    except OSError as exc:
+    except (OSError, ValueError) as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
