@@ -1,0 +1,18 @@
+{
+  "schema": "agent_experience_portable_v1",
+  "files": {
+    "agent_experience.py": "51844861c4322042028a83cb595d4b2ae7ff81afade0afd81536f2dbe0a4a37b",
+    "test_agent_experience.py": "cf2ed54a826078a1be81ff01f61e4c4136ed226af4e52987be18c9409476ea72",
+    "agent_lesson_registry_v1.json": "23afca95011991661b2d7b9b114668c64af49456d1095863508d69f776a428fd",
+    "agent_failure_benchmark_v1.jsonl": "3e01a9054908a82c11ade3ebd731b215fd1607b08fc43cca39b5ee8ed2ea8f70",
+    "AGENT_EXPERIENCE_RUNBOOK.md": "7055798eacddda701c6fdb67f3763b877352c3ac79d04a0a8a98e441dc0d4d92",
+    "instrumentation_trial_20261028.json": "7d4475247e39b9ada4ff80e7cfbf7ac5f6f28fed40ffdab49bbe4618d78a4c96",
+    "synthetic_trace_fixture.jsonl": "0e1bc029a2372cc31fb40d3ca63558d3bf4449653c5c40aecd3e948db9dd1867",
+    "synthetic_action_score_v1.json": "b7f380231368cd3d18515fb52d2c779c873cba096406428d2c3d181a29f857fb",
+    "agent_experience_events_v1.jsonl": "65322d16efa8b08a996cb4a6a260d27ef5fdba8b76974c5e18c6622049a18418",
+    "EX-TAISEI-20261028-01.json": "01b6024b16a8754d631b26cb84deaf58ff5280ce14c1e1581b8fc3b5c47777e1"
+  },
+  "source_tests_passed": 24,
+  "model_generalization_demonstrated": false,
+  "status": "source_tested_not_behaviorally_validated"
+}
