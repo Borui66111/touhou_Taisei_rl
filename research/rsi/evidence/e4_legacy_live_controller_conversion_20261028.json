@@ -1,6 +1,6 @@
 {
   "schema": "taisei_live_controller_conversion_e4_v1",
-  "timestamp_utc": "2026-10-28T07:48:00Z",
+  "timestamp_utc": "2026-10-28T07:45:10Z",
   "branch": "research/rsi-automation-v1",
   "model": {
     "name": "e4_weighted_bc_seed48030.pt",
