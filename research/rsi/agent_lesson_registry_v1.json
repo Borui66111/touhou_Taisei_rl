@@ -1,0 +1,156 @@
+{
+  "schema": "agent_lesson_registry_v1",
+  "version": "2026-10-28.1",
+  "purpose": "Candidate retrieval keys; only source-verified lessons, not claims of successful agent adaptation.",
+  "lessons": [
+    {
+      "id": "LESSON-PROXY-EXIT",
+      "name": "Do not substitute a proxy milestone for the user's end objective",
+      "triggers": [
+        "prototype",
+        "toy",
+        "proxy",
+        "simulation",
+        "benchmark",
+        "gameplay"
+      ],
+      "operational_rule": "Identify actual target environment, omitted realism, and an explicit prototype exit gate before more optimization. Label proxy metrics honestly.",
+      "exceptions": "Use a prototype as final deliverable only if user explicitly selected that scope.",
+      "evidence_ref": "research/rsi/evidence/taisei_agent_misalignment_case_20261028.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-EVIDENCE-TIERS",
+      "name": "Keep evidence and competence claims at the same verification tier",
+      "triggers": [
+        "ci",
+        "source tests",
+        "imitation",
+        "accuracy",
+        "survival",
+        "replay",
+        "video",
+        "judge",
+        "success",
+        "native"
+      ],
+      "operational_rule": "Separate infrastructure, offline imitation, native gameplay, independent replay, genuinely rendered footage, visual inspection, and matched performance. Promote no unsupported claim.",
+      "exceptions": "Describe observed source-only or offline facts as such; these remain valid engineering findings.",
+      "evidence_ref": "research/rsi/REPLAY_VERIFICATION.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-RECORD-INSPECT",
+      "name": "Automate actual-world recording and verification when feasible",
+      "triggers": [
+        "replay",
+        "recording",
+        "video",
+        "frames",
+        "screenshots",
+        "visual",
+        "capture",
+        "tsr",
+        "compressed",
+        "events"
+      ],
+      "operational_rule": "Execute genuine environment, capture full action/state logs and rendered evidence, check media integrity and inspect real frames. Distinguish an input replay from a video.",
+      "exceptions": "Do not claim visual verification when native renderer or image observations are unavailable; request only genuinely inaccessible resources.",
+      "evidence_ref": "research/rsi/REPLAY_VERIFICATION.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-LOCAL-RUNTIME",
+      "name": "Do not confuse isolated execution runtimes",
+      "triggers": [
+        "container",
+        "local",
+        "scheduler",
+        "github actions",
+        "environment",
+        "source",
+        "dns",
+        "archive"
+      ],
+      "operational_rule": "Check the actual execution environment and durable artifact paths. Restore hashed sources, bound retries, fail closed on missing pinned prerequisites, and do not trigger a disallowed fallback.",
+      "exceptions": "If user explicitly authorizes hosted execution, respect their compute, security, cost, and scheduling constraints.",
+      "evidence_ref": "research/rsi/LOCAL_OPERATOR.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-STATE-AUTHORITY",
+      "name": "Verify live state before using historical memory",
+      "triggers": [
+        "repo",
+        "branch",
+        "git",
+        "status",
+        "progress",
+        "correction",
+        "stale"
+      ],
+      "operational_rule": "Read current designated source-of-truth and evidence first. A correction requires checking contradicted claims; lack of local access does not prove absence of work elsewhere.",
+      "exceptions": "If live authority cannot be accessed, label facts unknown or user-reported instead of asserting no work was done.",
+      "evidence_ref": "research/rsi/BRANCH_POLICY.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-EXPERIMENT-CONTROLS",
+      "name": "Use matched baselines and rule out confounding mechanisms",
+      "triggers": [
+        "baseline",
+        "matched",
+        "seed",
+        "bomb",
+        "ppo",
+        "skill",
+        "clear",
+        "metric",
+        "confound"
+      ],
+      "operational_rule": "Measure the target behavior on identical conditions, preserve checkpoint provenance, separate external resource effects and avoid selection on sealed final seeds.",
+      "exceptions": "A preliminary noncausal diagnostic may still be useful if labeled descriptive and followed by a comparative test.",
+      "evidence_ref": "research/rsi/COMPETENCE_SPEC.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-CORRECTION-LEARNING",
+      "name": "Treat repeated corrections as experience, not prompt inflation",
+      "triggers": [
+        "correction",
+        "misalignment",
+        "feedback",
+        "again",
+        "rule",
+        "lesson",
+        "learn",
+        "rules",
+        "safety rules",
+        "end-to-end",
+        "integration"
+      ],
+      "operational_rule": "Record original belief, observed action, user-intent delta, counterfactual, transferable trigger, exception and an independent test. Keep original evidence and de-duplicate rules.",
+      "exceptions": "Do not store routine or sensitive content unnecessarily or claim corrected behavior without a future independent task trial.",
+      "evidence_ref": "research/rsi/AGENT_EXPERIENCE_LEARNING.md",
+      "status": "candidate"
+    },
+    {
+      "id": "LESSON-AUTONOMY-BOUNDARY",
+      "name": "Do feasible work autonomously, escalate genuine authority boundaries",
+      "triggers": [
+        "ask",
+        "credentials",
+        "permission",
+        "access",
+        "human",
+        "review",
+        "autonomous",
+        "tools"
+      ],
+      "operational_rule": "Execute bounded reversible tasks when source and tools exist; stop and ask for authorization or missing private access rather than inventing results or seeking human work unnecessarily.",
+      "exceptions": "Never infer that being proactive overrides paid compute, private credentials, destructive operations or sealed research controls.",
+      "evidence_ref": "research/rsi/AGENT_EXPERIENCE_LEARNING.md",
+      "status": "candidate"
+    }
+  ]
+}
