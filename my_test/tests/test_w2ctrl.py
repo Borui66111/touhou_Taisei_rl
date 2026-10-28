@@ -180,6 +180,30 @@ class PortableTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'policy file SHA-256'):
                 w.audit_manifest(p,self.policy)
 
+    def test_policy_load_must_precede_run(self):
+        rows=log_lines(1,self.sha)
+        rows=[*rows[1:4],rows[0],*rows[4:]]
+        self.assertEqual(w.audit_lines(rows,self.sha)['status'],'not_verified')
+
+    def test_run_requires_valid_seed(self):
+        rows=log_lines(1,self.sha)
+        rows[1]=rows[1].replace('seed=42132','seed=unknown')
+        self.assertEqual(w.audit_lines(rows,self.sha)['status'],'not_verified')
+
+    def test_all_decisions_rejected_not_verified(self):
+        rows=[x.replace('accepted=1','accepted=0') for x in log_lines(1,self.sha)]
+        self.assertEqual(w.audit_lines(rows,self.sha)['status'],'not_verified')
+
+    def test_frame_regression_not_verified(self):
+        rows=log_lines(1,self.sha)
+        rows[3]=rows[3].replace('frame=2','frame=1')
+        self.assertEqual(w.audit_lines(rows,self.sha)['status'],'not_verified')
+
+    def test_empty_outcome_not_verified(self):
+        rows=log_lines(1,self.sha)
+        rows[4]=rows[4].replace('outcome=defeat','something_else=defeat')
+        self.assertEqual(w.audit_lines(rows,self.sha)['status'],'not_verified')
+
     def test_nonwindows_fails_closed(self):
         with mock.patch.object(w.sys,'platform','linux'):
             with self.assertRaisesRegex(RuntimeError,'Windows'):
