@@ -2,10 +2,25 @@
 
 ## Live demo from a trusted skill-policy `.pt` (w2ctrl)
 
-After pulling `feat/native-rl-workbench` and ensuring your *existing* `rl_skill_v2` Windows game build and resources are still present, you can convert and launch a **compatible new research checkpoint** in one command, from `my_test`:
+Update your existing **Windows workbench** checkout first. The prebuilt `rl_skill_v2/src/taisei.exe`, Meson environment and game resources must already exist locally; `git pull` does **not** download or rebuild them.
 
 ```powershell
+# At the repository root
+git switch feat/native-rl-workbench
+git pull --ff-only origin feat/native-rl-workbench
+cd my_test
+
+# Install dependencies into the Python used for exporting the model (once)
+py -3.9 -m pip install torch numpy
+
+# Convert a trusted compatible experiment checkpoint, launch Taisei, and audit new logs
 py -3.9 .\scripts\w2ctrl.py demo "C:\path\to\new-experiment.pt" --renderer gl33
+
+# Optional: conversion and validation ONLY, without launching the game
+py -3.9 .\scripts\w2ctrl.py prepare "C:\path\to\new-experiment.pt" .\results\new-experiment_TSKILL2.bin
+
+# Optional: run the local source tests (no gameplay is performed)
+py -3.9 -m unittest discover -s .\tests -p test_w2ctrl.py -v
 ```
 
 This invokes the branch's canonical `export_live_skill_ppo_v2.py`, validates both movement and skill heads, exports a SHA-bound `TSKILL2` binary under `results/w2ctrl/`, launches the existing Windows Taisei executable, and audits the fresh game log. **Enter a stage via the game menu**. A game log establishes controller acceptance only; it does not establish a playable replay, visual inspection, or improved gameplay competence. Results and audit files are kept under `results/w2ctrl/` by default. The workflow does not compile or install the game.
