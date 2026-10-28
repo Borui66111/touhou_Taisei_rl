@@ -10,7 +10,7 @@ import unittest
 from unittest import mock
 
 HERE = Path(__file__).resolve().parent
-SRC = HERE.parent / 'my_test' / 'scripts'
+SRC = HERE.parent / 'scripts' if (HERE.parent / 'scripts' / 'w2ctrl.py').is_file() else HERE.parent / 'my_test' / 'scripts'
 sys.path.insert(0, str(SRC))
 import w2ctrl as w
 import export_live_skill_ppo_v2 as exporter
@@ -74,7 +74,7 @@ class PortableTests(unittest.TestCase):
         import torch
         with tempfile.TemporaryDirectory() as tmp:
             cp=Path(tmp)/'legacy.pt'; torch.save({'policy_type':'legacy','input_dim':528,'actions':18,'width':128},cp)
-            with self.assertRaisesRegex(ValueError,'architecture mismatch'):
+            with self.assertRaisesRegex(ValueError,'legacy checkpoint missing'):
                 w.prepare(cp,Path(tmp)/'bad.bin')
 
     def test_duplicate_protection_and_idempotence(self):
@@ -203,6 +203,40 @@ class PortableTests(unittest.TestCase):
         rows=log_lines(1,self.sha)
         rows[4]=rows[4].replace('outcome=defeat','something_else=defeat')
         self.assertEqual(w.audit_lines(rows,self.sha)['status'],'not_verified')
+
+    def test_one_command_demo_exports_and_calls_live_launcher(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            policy=Path(tmp)/'experiment.bin'
+            report=Path(tmp)/'audit.json'
+            with mock.patch.object(w, 'run', return_value={'status':'matched_logged_control'}) as fn:
+                result=w.demo(self.cp,policy=policy,report_out=report)
+            self.assertEqual(result['status'],'matched_logged_control')
+            self.assertEqual(w.parse_policy(policy)['checkpoint_sha256'], self.sha)
+            fn.assert_called_once_with(policy,'gl33',report)
+
+    def test_one_command_default_policy_is_content_addressed(self):
+        with mock.patch.object(w, 'prepare', return_value={'status':'exported'}) as prep, \
+             mock.patch.object(w, 'run', return_value={'status':'not_verified'}) as run:
+            out=w.demo(self.cp)
+        path=prep.call_args.args[1]
+        self.assertIn(self.sha[:12],str(path))
+        self.assertEqual(path.name, f'{self.cp.stem}_{self.sha[:12]}_TSKILL2.bin')
+        self.assertEqual(out['status'],'not_verified')
+        self.assertEqual(run.call_args.args[0],path)
+
+    def test_one_command_rejects_mismatched_expected_hash_before_launch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(w, 'run') as fn:
+                with self.assertRaisesRegex(ValueError,'checkpoint SHA-256 mismatch'):
+                    w.demo(self.cp,policy=Path(tmp)/'bad.bin',expected_sha='0'*64)
+            fn.assert_not_called()
+
+    def test_one_command_rejects_missing_model_without_launch(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(w, 'run') as fn:
+                with self.assertRaises(FileNotFoundError):
+                    w.demo(Path(tmp)/'missing.pt')
+            fn.assert_not_called()
 
     def test_nonwindows_fails_closed(self):
         with mock.patch.object(w.sys,'platform','linux'):
