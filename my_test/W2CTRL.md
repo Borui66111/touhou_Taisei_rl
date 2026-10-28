@@ -1,6 +1,6 @@
 # W2CTRL — verified skill-policy export and guarded Windows live control
 
-**Source comparison:** `Borui66111/touhou_Taisei_rl` `main` at `fd0376f6ca2e63071bb1d0ef07780f349b670614` (2026-10-28), integrated into canonical `research/rsi-automation-v1` without editing `main`.
+**Integration:** This copy lives on `feat/native-rl-workbench`, explicitly requested for the existing local Windows workbench. It reuses the existing branch’s exact `TSKILL2` exporter and launcher; main-branch source was compared at `fd0376f6ca2e63071bb1d0ef07780f349b670614` (2026-10-28). No new branch or renderer build is created.
 
 The actual `main` branch includes `my_test/scripts/export_live_skill_ppo_v2.py` (Git blob `c54158611b5e0a145620733fc24e99612b3e5329`) and `my_test/scripts/run_live_ppo_windows.py` (Git blob `9280be78511a389e407c71684ce34efce63193a0`). These supersede the earlier assumption that the `TSKILL2` binary schema was unknown. W2CTRL **uses the same exporter and launcher**, not a guessed format or toy engine.
 
@@ -15,13 +15,21 @@ The actual `main` branch includes `my_test/scripts/export_live_skill_ppo_v2.py` 
 | Exported challenger | `e1_challenger_seed48020_TSKILL2.bin`, **357,347 bytes**, SHA-256 `63e1acc2b27aa74bb766f079061b2f1b3e0e13097a4f885fcfc8396c14c53423` |
 | Exported E1 control | `e1_control_seed48020_TSKILL2.bin`, SHA-256 `c7cc6d0e9238960f0a32a4a7ee190a117713d056918bdf484abc080e781100a2` |
 | Numerical validation | 16 observation vectors per model, BOTH logits heads, argmax parity, max absolute difference under `5e-7`; **not C native loader parity** |
-| Existing E4 model | 528-input legacy `TPPOv1`; **rejected** by skill-v2 exporter and should not be loaded in `rl_skill_v2` |
+| Existing E4 model | 528-input legacy `.pt` is **adapted** to the same `TSKILL2` 546-input runtime; 528-prefix movement logits preserved; Bomb/Special always `None` |
 
 ## How to run on your Windows Taisei workbench
 
 Use your working local `my_test` directory, where `rl_skill_v2/src/taisei.exe`, resources, `.venv-winbuild`, and toolchains are actually present. A fresh clone **does not include** game build/assets.
 
-Copy the included trusted checkpoint and scripts into the corresponding paths, or use them from the source branch after the new scripts are committed.
+After updating the existing `feat/native-rl-workbench` checkout, the scripts are available in `my_test/scripts/`. Save the new trusted `.pt` checkpoint wherever convenient; no manual binary conversion, copied scripts, model-specific C patch, or hard-coded checkpoint SHA edit is required for the existing `rl_skill_v2` loader.
+
+**Recommended: one command for any trusted compatible E1-style checkpoint** (from `my_test`):
+
+```powershell
+py -3.9 .\scripts\w2ctrl.py demo "C:\path\to\new_experiment.pt" --renderer gl33
+```
+
+This automatically verifies and exports the checkpoint into a digest-versioned `results/w2ctrl/` binary, launches the *existing* `rl_skill_v2` game, and writes a new audit JSON. Enter a game stage in the real game's menu. The exporter supports only **546-input, 18 movement + 3 skill actions, mask-v2** models, so other architectures are deliberately rejected. It does not install or compile Taisei.
 
 ```powershell
 # From the repository's my_test directory. Use the Python installation with torch + numpy.
@@ -44,6 +52,18 @@ The launcher opens the real game; **enter a stage through the menu**. `w2ctrl.py
 
 ### Why a separate W2CTRL verifier?
 
+## One live controller and automatic E4 migration (2026-10-28)
+
+All rendered-game policies use **exactly one** ABI: `rl_skill_v2` / `TSKILL2`, 546 floats, 18 movement + 3 skill logits and mask `taisei_skill_mask_v2_respawn`. `w2ctrl.py` accepts both genuine 546-feature skill checkpoints and archived E4 528-feature legacy checkpoints through the audited `legacy_to_skillv2.py` adapter. A legacy model becomes a **derived** 546-feature checkpoint with the 18 new input weights zero-padded and the skill-head fixed to select `None`; the original movement network is copied exactly, with 16-vector parity verification. Both source and derived hashes are preserved. It does not acquire skill competence or become a newly trained skill model. New native PPO training through `scripts/train_torch_ppo.py` defaults exclusively to canonical skill-v2; unsupported legacy/v3 training modes are refused. See [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md).
+
+```powershell
+# Both models run via the same skill-v2 Windows game control; from my_test.
+py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e1_challenger_seed48020.pt' --renderer gl33
+py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e4_weighted_bc_seed48030.pt' --renderer gl33
+```
+
+**Before launching:** the required atlas `portraits.tsatlas.zst` must exist in a compatible rendered-game resource root. The new resource preflight checks `TAISEI_RES_PATH` candidates and supports `--resources PATH`; see [RESOURCE_RECOVERY.md](RESOURCE_RECOVERY.md). The observed fatal screenshot showed **0 loaded policies and 0 decisions**, a game startup failure, not a checkpoint failure. An unrelated VS environment warning is not sufficient explanation for the atlas fatal error. If the matching atlas is not found, regenerate **same-revision** resources and do not claim the game ran.
+
 The current `main` Windows launcher recognizes a **single** run sequence for its `attribution = matched` status. Its README documents **8** run records and **5,461** decisions in a local session. W2CTRL checks multiple independently ordered `RL run` / `RL decision` / `RL policy outcome` segments with a matching checkpoint SHA and avoids using historic log entries. Its tests use **synthetic log fixtures only** (including out-of-order loads, missing seeds, rejected decisions, and nonmonotonic frames); they do not prove the actual game ran here.
 
 ### Evidence levels and remaining gates
@@ -65,6 +85,6 @@ From a fresh source checkout (CPU PyTorch, NumPy):
 py -3.9 -m unittest discover -s .\tests -p test_w2ctrl.py -v
 ```
 
-The 29 portable tests generate their own **synthetic model fixture**. For the *actual* archived E1 checkpoint test, set `TAISEI_E1_PT` to the trusted local checkpoint path first; this adds one integration test with the exact expected binary SHA (30/30 passed in the local full test).
+The portable tests generate their own **synthetic model fixture**. For the *actual* archived E1 checkpoint test, set `TAISEI_E1_PT` to the trusted local checkpoint path first; this adds one integration test with the exact expected binary SHA (30/30 passed in the local full test).
 
 Source tests do not establish Windows game integration; do not mark the full game pipeline complete until an actual run and visual verification have been inspected.
