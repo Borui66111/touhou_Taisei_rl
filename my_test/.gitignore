@@ -1,0 +1,27 @@
+# Local runtimes, toolchains, upstream checkout, and build products
+/.venv/
+/.venv-*/
+/venv/
+/venv-*/
+/toolchains/
+/upstream/
+/windows-build/
+/wb*/
+/results/
+/checkpoints/
+/exports/
+/replays/
+/logs/
+/.logs/
+
+# Host-local configuration and generated runtime paths
+/native-local.ini
+/.native_paths
+
+# Generated Python/test caches
+**/__pycache__/
+**/*.py[cod]
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+/.cache/

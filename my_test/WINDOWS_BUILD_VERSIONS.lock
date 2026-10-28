@@ -1,0 +1,12 @@
+# Exact resolved versions installed in my_test/.venv-winbuild
+# Python: 3.9.6 (64-bit Windows)
+pip==26.0.1
+meson==1.11.2
+ninja==1.13.2
+cmake==4.4.4
+backports.zstd==1.3.0
+
+# Toolchain package
+llvm-mingw=20261006
+llvm=23.1.3
+compiler_target=x86_64-w64-windows-gnu

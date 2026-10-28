@@ -1,0 +1,52 @@
+{
+  "artifact": "portable PyTorch PPO checkpoint",
+  "portable_checkpoint": {
+    "path": "models/ppo_skill_survival1_unmasked_200k_seed48000_portable.pt",
+    "sha256": "66d4808187e745b9c863b2329bf7dd25a6aeec2a554a35a73377622cd1520d4c"
+  },
+  "sanitized_config_path_fields": {
+    "library_path": null,
+    "resource_path": null,
+    "storage_path": null
+  },
+  "semantic_env_config": {
+    "character": 0,
+    "damage_weight": 0.02,
+    "death_penalty": -10.0,
+    "difficulty": 2,
+    "frames_per_action": 1,
+    "graze_weight": 0.001,
+    "loss_penalty": -10.0,
+    "max_frames": 10000,
+    "max_laser_samples": 16,
+    "max_projectiles": 64,
+    "no_bomb_bonus": 0.0,
+    "practice": false,
+    "shot_mode": 0,
+    "stage_id": 1,
+    "survival_weight": 1.0,
+    "win_bonus": 20.0
+  },
+  "source": {
+    "path": "results/ppo_skill_survival1_200k_seed48000_20261023_resourcefix_resume2.pt",
+    "sha256": "3a9c3a3cba1e15ade2b67ba5fe7518da31d987ab90c3f212af815f59ebcf2cd4"
+  },
+  "verification": {
+    "architecture": {
+      "actions": 18,
+      "input_dim": 546,
+      "skill_action_mask_version": null,
+      "skills": 3,
+      "width": 128
+    },
+    "model_state_dict_exact": true,
+    "model_tensor_count": 10,
+    "optimizer_exact": true,
+    "policy_type": "skill",
+    "semantic_env_config_exact": true,
+    "steps": 200000,
+    "training_state_and_rng_exact": true,
+    "updates": 391,
+    "workstation_path_scan_clean": true
+  }
+}
