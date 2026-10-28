@@ -238,6 +238,58 @@ class PortableTests(unittest.TestCase):
                     w.demo(Path(tmp)/'missing.pt')
             fn.assert_not_called()
 
+    def test_empty_replay_both_zstd_sections_rejected(self):
+        from inspect_rendered_tsr import inspect
+        raw=bytes.fromhex('686f6e6fe29da4756d690e8001050000002200000028b52ffd20000100000000000028b52ffd200001000069')
+        with tempfile.TemporaryDirectory() as temp:
+            replay=Path(temp)/'fixture.tsr'; replay.write_bytes(raw)
+            result=inspect(replay)
+            self.assertEqual(result['file_bytes'],44)
+            self.assertEqual(result['status'],'invalid_empty_metadata_and_events')
+            self.assertTrue(result['metadata_empty_frame_prefix'])
+            self.assertTrue(result['events_empty_frame_prefix'])
+            self.assertFalse(result['playable_verified'])
+
+    def test_live_manifest_marks_header_only_replay_failed(self):
+        from inspect_rendered_tsr import inspect
+        raw=bytes.fromhex('686f6e6fe29da4756d690e8001050000002200000028b52ffd20000100000000000028b52ffd200001000069')
+        with tempfile.TemporaryDirectory() as temp:
+            replay=Path(temp)/'empty.tsr';replay.write_bytes(raw)
+            manifest=Path(temp)/'manifest.json'
+            m={'sha256':{'policy':w.sha256_file(self.policy),'game':'1'*64},
+               'policy_metadata':{'checkpoint_sha256':self.sha},
+               'log_capture':{'status':'captured','relevant_lines':log_lines(1,self.sha)},
+               'log_events':{'replay':{'path':str(replay),'size':44,
+                                       'sha256':hashlib.sha256(raw).hexdigest()}},
+               'status':'complete','exit_status':0}
+            manifest.write_text(json.dumps(m))
+            result=w.audit_manifest(manifest,self.policy)
+            self.assertEqual(result['status'],'matched_logged_control')
+            self.assertEqual(result['rsi_evidence_status'],'failed_replay')
+            self.assertEqual(result['replay_preflight']['status'],'invalid_empty_metadata_and_events')
+            self.assertEqual(result['replay_playability'],'not_verified')
+
+    def test_replay_changed_since_manifest_detected(self):
+        raw=bytes.fromhex('686f6e6fe29da4756d690e8001050000002200000028b52ffd20000100000000000028b52ffd200001000069')
+        with tempfile.TemporaryDirectory() as temp:
+            replay=Path(temp)/'empty.tsr';replay.write_bytes(raw)
+            manifest=Path(temp)/'manifest.json'
+            m={'sha256':{'policy':w.sha256_file(self.policy),'game':'1'*64},
+               'policy_metadata':{'checkpoint_sha256':self.sha},
+               'log_capture':{'status':'captured','relevant_lines':log_lines(1,self.sha)},
+               'log_events':{'replay':{'path':str(replay),'size':44,'sha256':'a'*64}},
+               'status':'complete','exit_status':0}
+            manifest.write_text(json.dumps(m))
+            result=w.audit_manifest(manifest,self.policy)
+            self.assertEqual(result['rsi_evidence_status'],'failed_replay')
+            self.assertEqual(result['replay_preflight']['status'],'replay_changed_since_launcher_manifest')
+
+    def test_replay_inspection_cli_fails_closed(self):
+        raw=bytes.fromhex('686f6e6fe29da4756d690e8001050000002200000028b52ffd20000100000000000028b52ffd200001000069')
+        with tempfile.TemporaryDirectory() as temp:
+            replay=Path(temp)/'empty.tsr';replay.write_bytes(raw)
+            self.assertEqual(w.main(['replay-check',str(replay)]),2)
+
     def test_nonwindows_fails_closed(self):
         with mock.patch.object(w.sys,'platform','linux'):
             with self.assertRaisesRegex(RuntimeError,'Windows'):
