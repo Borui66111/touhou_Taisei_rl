@@ -193,11 +193,15 @@ def audit_lines(lines: list[str], expected_sha: str) -> dict:
         line = _message(raw)
         if line.startswith("RL skill-v2 policy loaded "):
             data = _fields(line)
+            if current is not None:
+                violations.append(f"line {lineno}: unexpected policy reload within a stage run")
             loaded += 1
             if data.get("checkpoint_sha256") != expected_sha:
                 violations.append(f"line {lineno}: loaded checkpoint identity mismatch")
         elif line.startswith("RL run "):
             data = _fields(line)
+            if not loaded:
+                violations.append(f"line {lineno}: run occurred before policy-loaded confirmation")
             if current is not None:
                 violations.append(f"line {lineno}: previous run has no terminal outcome")
             if data.get("loaded") != "1" or data.get("policy_type") != "skill_v2":
@@ -208,10 +212,13 @@ def audit_lines(lines: list[str], expected_sha: str) -> dict:
                 seed = int(data.get("seed", "-1"))
             except ValueError:
                 seed = -1
+            if seed < 0:
+                violations.append(f"line {lineno}: missing/invalid native run seed")
             if SEALED_MIN <= seed <= SEALED_MAX:
                 violations.append(f"line {lineno}: sealed evaluation seed in run")
             current = {"start":lineno, "seed":seed,"stage":data.get("stage"),
                        "difficulty":data.get("difficulty"),"decisions":0,
+                       "accepted_decisions":0, "last_frame":None,
                        "first_action_count":None,"last_action_count":None,
                        "outcome":None,"replay_path":None}
             runs.append(current)
@@ -231,6 +238,10 @@ def audit_lines(lines: list[str], expected_sha: str) -> dict:
                 frame = int(data["frame"])
                 if frame < 0 or data.get("accepted") not in {"0", "1"}:
                     violations.append(f"line {lineno}: invalid frame/accepted flag")
+                if current["last_frame"] is not None and frame <= current["last_frame"]:
+                    violations.append(f"line {lineno}: non-increasing game frame")
+                current["last_frame"] = frame
+                current["accepted_decisions"] += int(data["accepted"] == "1")
                 if not(0 <= movement < 18 and 0 <= skill < 3):
                     violations.append(f"line {lineno}: invalid action ID")
                 if action_count <= 0 or (current["last_action_count"] is not None and
@@ -250,8 +261,12 @@ def audit_lines(lines: list[str], expected_sha: str) -> dict:
                 if data.get("checkpoint_sha256") != expected_sha:
                     violations.append(f"line {lineno}: outcome checkpoint mismatch")
                 current["outcome"] = data.get("outcome")
+                if not current["outcome"]:
+                    violations.append(f"line {lineno}: missing native outcome value")
                 if not current["decisions"]:
                     violations.append(f"line {lineno}: no policy decisions before outcome")
+                if not current["accepted_decisions"]:
+                    violations.append(f"line {lineno}: no accepted policy decisions")
                 current = None
         elif line.startswith("Saving "):
             if not runs:
