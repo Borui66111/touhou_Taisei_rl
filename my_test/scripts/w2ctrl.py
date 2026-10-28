@@ -329,6 +329,25 @@ def audit_manifest(path: Path, policy: Path) -> dict:
     if not isinstance(capture.get("relevant_lines"),list):
         raise ValueError("missing launcher fresh-log content")
     out=audit_lines(capture["relevant_lines"], policy_info["checkpoint_sha256"])
+    # Independent replay integrity gate. A "Saving" log entry proves neither
+    # gameplay events nor playability; keep control attribution separate.
+    from inspect_rendered_tsr import inspect as inspect_replay
+    replay_entry = report.get("log_events", {}).get("replay")
+    replay_path = replay_entry.get("path") if isinstance(replay_entry, dict) else None
+    if isinstance(replay_path, str) and replay_path:
+        replay_gate = inspect_replay(replay_path)
+        if replay_entry.get("sha256") and replay_gate.get("sha256") != replay_entry["sha256"]:
+            replay_gate["status"] = "replay_changed_since_launcher_manifest"
+        if replay_entry.get("size") is not None and replay_gate.get("file_bytes") != replay_entry["size"]:
+            replay_gate["status"] = "replay_size_changed_since_launcher_manifest"
+    else:
+        replay_gate = {"status": "not_available_in_launcher_manifest",
+                       "playable_verified": False, "visual_inspection": "not_performed"}
+    out["replay_preflight"] = replay_gate
+    out["rsi_evidence_status"] = (
+        "failed_replay" if replay_gate["status"].startswith(("invalid_", "truncated_", "missing_", "replay_"))
+        else "requires_playback_and_visual_review" if replay_gate["status"] == "header_plausible_full_decode_required"
+        else "no_verified_replay")
     out.update({"launcher_manifest":str(Path(path).resolve()),
                 "policy_sha256":policy_info["policy_sha256"],
                 "checkpoint_sha256":policy_info["checkpoint_sha256"],
@@ -416,6 +435,8 @@ def main(argv=None) -> int:
     inspect.add_argument("policy",type=Path)
     check=sub.add_parser("audit",help="audit launcher fresh-log manifest, including multi-run sessions")
     check.add_argument("manifest",type=Path);check.add_argument("policy",type=Path)
+    replay_check=sub.add_parser("replay-check",help="read-only structural check for a saved native Taisei TSR")
+    replay_check.add_argument("replay",type=Path)
     launch=sub.add_parser("run",help="launch actual Windows build, then audit NEW game log")
     launch.add_argument("policy",type=Path);launch.add_argument("--renderer",default="gl33")
     launch.add_argument("--report",type=Path)
@@ -435,6 +456,9 @@ def main(argv=None) -> int:
             result=parse_policy(args.policy)
         elif args.command=="audit":
             result=audit_manifest(args.manifest,args.policy)
+        elif args.command=="replay-check":
+            from inspect_rendered_tsr import inspect as inspect_replay
+            result=inspect_replay(args.replay)
         elif args.command=="demo":
             result=demo(args.checkpoint,policy=args.policy,renderer=args.renderer,
                         expected_sha=args.expected_sha256,report_out=args.report,
@@ -442,7 +466,11 @@ def main(argv=None) -> int:
         else:
             result=run(args.policy,args.renderer,args.report,resources=args.resources)
         print(json.dumps(result,indent=2,sort_keys=True))
-        return 0 if result.get("status") not in {"not_verified"} else 2
+        if args.command == "replay-check":
+            return 0 if result.get("status") == "header_plausible_full_decode_required" else 2
+        return 2 if (result.get("status") == "not_verified"
+                     or result.get("rsi_evidence_status") == "failed_replay"
+                     or result.get("live_control_audit", {}).get("rsi_evidence_status") == "failed_replay") else 0
     except (OSError,ValueError,RuntimeError,KeyError) as exc:
         print(f"w2ctrl refused: {type(exc).__name__}: {exc}",file=sys.stderr)
         return 2
