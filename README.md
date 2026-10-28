@@ -1,8 +1,9 @@
-# Taisei RL: Windows-ready integration + PyTorch PPO (Phase 2)
+# Taisei RL
 
-**Windows user:** START HERE: [README_WINDOWS.md](README_WINDOWS.md).
+Current project work and practical setup instructions are in the `my_test` workbench:
 
-**Status:** native game NOT built in this assistant environment, so real-game RL training has not occurred. See [EVIDENCE.md](EVIDENCE.md) and [STATE.md](STATE.md).
+- [Workbench overview](https://github.com/Borui66111/touhou_Taisei_rl/blob/feat/native-rl-workbench/my_test/README.md)
+- [Windows / WSL2 runbook](https://github.com/Borui66111/touhou_Taisei_rl/blob/feat/native-rl-workbench/my_test/README_WINDOWS.md)
 
 This update adds a PowerShell/WSL2 installer, pure PyTorch PPO, proper time-limit bootstrapping, mask-aware bullet observations, seeded evaluation, baseline planner, native spell discovery, reproducibility and replay scripts. All real-game work calls the native Taisei C API; there is no physics substitute.
 
