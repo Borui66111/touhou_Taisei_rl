@@ -150,22 +150,41 @@ def prepare(checkpoint: Path, output: Path, expected_sha: str | None = None) -> 
     try:
         from export_live_skill_ppo_v2 import export
     except ImportError as exc:
-        raise RuntimeError("canonical exporter missing: copy my_test/scripts/export_live_skill_ppo_v2.py from main") from exc
+        raise RuntimeError("canonical TSKILL2 exporter missing") from exc
+    import torch
+    obj = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    source_policy_type = obj.get("policy_type") if isinstance(obj, dict) else None
     output.parent.mkdir(parents=True, exist_ok=True)
+    export_checkpoint = checkpoint
+    adaptation = None
+    if source_policy_type == "legacy":
+        # One runtime only: wrap 528 movement features into the 546-input
+        # skill-v2 ABI, keeping the legacy movement logits and disabling skills.
+        from legacy_to_skillv2 import adapt
+        adapted_path = output.parent / "adapted_checkpoints" / (
+            f"{checkpoint.stem}_{check_hash[:12]}_skillv2.pt")
+        adaptation = adapt(checkpoint, adapted_path)
+        export_checkpoint = adapted_path
+    elif source_policy_type != "skill":
+        raise ValueError(f"unsupported source policy_type={source_policy_type!r}; expected skill or exact legacy")
     tmp = output.with_name(f".{output.name}.{uuid.uuid4().hex}.tmp")
     try:
-        export(checkpoint, tmp)
-        parity = verify_forward_logits(checkpoint,tmp)
+        export(export_checkpoint, tmp)
+        parity = verify_forward_logits(export_checkpoint,tmp)
         if output.exists():
             if sha256_file(output) != sha256_file(tmp):
                 raise FileExistsError(f"refusing to replace existing different policy: {output}")
             status = "already_identical"
         else:
-            # Atomic, same-volume hardlink: existing output is never overwritten,
-            # and a failed copy cannot leave a partial policy masquerading as valid.
+            # Atomic, same-volume hardlink. Original checkpoint is never edited.
             os.link(tmp, output)
             status = "exported"
-        return {"status": status, "checkpoint":str(checkpoint),"output":str(output), **parity}
+        return {"status": status, "checkpoint":str(checkpoint),"output":str(output),
+                "source_checkpoint_sha256":check_hash,
+                "source_policy_type":source_policy_type,
+                "live_controller_design":"TSKILL2_546_18_3_only",
+                "adaptation":adaptation,
+                **parity}
     finally:
         tmp.unlink(missing_ok=True)
 
@@ -333,16 +352,23 @@ def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None,
     launcher=HERE / "run_live_ppo_windows.py"
     if not launcher.is_file():
         raise FileNotFoundError("missing actual main-branch run_live_ppo_windows.py")
+    # Validate required rendered assets before launching the game. Without this,
+    # a fatal startup error looks like a model policy with zero decisions.
+    from taisei_resource_doctor import select_resources
+    from run_live_ppo_windows import ROOT, PATHS
+    resource_override = Path(resources).resolve() if resources is not None else None
+    resource_root, resource_report = select_resources(
+        ROOT, PATHS["resources"], resource_override)
     scratch=Path.home()/"AppData"/"Local"/"hermes"/"cache"/"scratch"
     previous={f.resolve() for f in scratch.glob("taisei-live-ppo-*.json")} if scratch.is_dir() else set()
     argv=[sys.executable,str(launcher),"--renderer",renderer,"--rl-policy",str(policy)]
-    if resources is not None:
-        argv.extend(["--resources",str(Path(resources))])
+    argv.extend(["--resources", str(resource_root)])
     proc=subprocess.run(argv, check=False,cwd=str(HERE.parent))
     recent=sorted({f.resolve() for f in scratch.glob("taisei-live-ppo-*.json")}-previous)
     if len(recent)!=1:
         raise RuntimeError(f"cannot identify exactly one new launcher manifest; found {len(recent)}")
     audit=audit_manifest(recent[0],policy)
+    audit["resource_preflight"] = resource_report
     if proc.returncode!=0:
         audit["status"]="not_verified"
         audit["violations"].append("launcher subprocess returned nonzero")
