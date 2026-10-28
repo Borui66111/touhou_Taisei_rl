@@ -74,7 +74,7 @@ class PortableTests(unittest.TestCase):
         import torch
         with tempfile.TemporaryDirectory() as tmp:
             cp=Path(tmp)/'legacy.pt'; torch.save({'policy_type':'legacy','input_dim':528,'actions':18,'width':128},cp)
-            with self.assertRaisesRegex(ValueError,'architecture mismatch'):
+            with self.assertRaisesRegex(ValueError,'legacy checkpoint missing'):
                 w.prepare(cp,Path(tmp)/'bad.bin')
 
     def test_duplicate_protection_and_idempotence(self):
