@@ -1,0 +1,20 @@
+{
+  "model_sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+  "model_architecture": {
+    "input_dim": 546,
+    "actions": 18,
+    "skills": 3,
+    "policy_type": "skill",
+    "skill_action_mask_version": "taisei_skill_mask_v2_respawn",
+    "steps": 20000
+  },
+  "test_kind": "synthetic_observation_feature_contract_only",
+  "feature_width": 546,
+  "items_changed": true,
+  "item_position_input_changed": false,
+  "movement_logits_identical_when_only_items_change": true,
+  "skill_logits_identical_when_only_items_change": true,
+  "projectile_control_feature_changed": true,
+  "projectile_control_move_logit_max_delta": 0.05359739065170288,
+  "interpretation": "The 546-feature native E1 input intentionally omits items despite native obs containing them; this is not a live Taisei trajectory test."
+}
