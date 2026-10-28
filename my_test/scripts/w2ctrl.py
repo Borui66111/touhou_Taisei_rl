@@ -324,7 +324,8 @@ def audit_manifest(path: Path, policy: Path) -> dict:
     return out
 
 
-def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None) -> dict:
+def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None,
+        resources: Path | None = None) -> dict:
     if sys.platform != "win32":
         raise RuntimeError("rendered launcher requires Windows workstation; no fake game fallback")
     policy=Path(policy).resolve()
@@ -334,8 +335,10 @@ def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None) ->
         raise FileNotFoundError("missing actual main-branch run_live_ppo_windows.py")
     scratch=Path.home()/"AppData"/"Local"/"hermes"/"cache"/"scratch"
     previous={f.resolve() for f in scratch.glob("taisei-live-ppo-*.json")} if scratch.is_dir() else set()
-    proc=subprocess.run([sys.executable,str(launcher),"--renderer",renderer,"--rl-policy",str(policy)],
-                        check=False,cwd=str(HERE.parent))
+    argv=[sys.executable,str(launcher),"--renderer",renderer,"--rl-policy",str(policy)]
+    if resources is not None:
+        argv.extend(["--resources",str(Path(resources))])
+    proc=subprocess.run(argv, check=False,cwd=str(HERE.parent))
     recent=sorted({f.resolve() for f in scratch.glob("taisei-live-ppo-*.json")}-previous)
     if len(recent)!=1:
         raise RuntimeError(f"cannot identify exactly one new launcher manifest; found {len(recent)}")
@@ -352,7 +355,8 @@ def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None) ->
 
 
 def demo(checkpoint: Path, *, policy: Path | None = None, renderer: str = "gl33",
-         expected_sha: str | None = None, report_out: Path | None = None) -> dict:
+         expected_sha: str | None = None, report_out: Path | None = None,
+         resources: Path | None = None) -> dict:
     """Convert a trusted skill-v2 .pt and launch the existing rendered game.
 
     This is the one-command user path: the exported binary is tied to the
@@ -370,7 +374,8 @@ def demo(checkpoint: Path, *, policy: Path | None = None, renderer: str = "gl33"
     if report_out is None:
         report_out = HERE.parent / "results" / "w2ctrl" / "audits" / (
             f"{checkpoint.stem}_{uuid.uuid4().hex}.json")
-    result = run(Path(policy), renderer, report_out)
+    result = (run(Path(policy), renderer, report_out) if resources is None else
+              run(Path(policy), renderer, report_out, resources=resources))
     return {"status": result["status"], "model_conversion": exported,
             "live_control_audit": result, "audit_file": str(Path(report_out).resolve())}
 
@@ -388,12 +393,14 @@ def main(argv=None) -> int:
     launch=sub.add_parser("run",help="launch actual Windows build, then audit NEW game log")
     launch.add_argument("policy",type=Path);launch.add_argument("--renderer",default="gl33")
     launch.add_argument("--report",type=Path)
+    launch.add_argument("--resources",type=Path,help="explicit compiled Taisei resource root")
     single=sub.add_parser("demo",help="ONE COMMAND: convert trusted skill PT and launch/audit Windows Taisei")
     single.add_argument("checkpoint",type=Path)
     single.add_argument("--policy",type=Path,help="optional target TSKILL2 path (default: content-addressed results/w2ctrl)")
     single.add_argument("--expected-sha256",help="optional trusted checkpoint digest")
     single.add_argument("--renderer",default="gl33")
     single.add_argument("--report",type=Path)
+    single.add_argument("--resources",type=Path,help="explicit compiled Taisei resource root")
     args=p.parse_args(argv)
     try:
         if args.command=="prepare":
@@ -404,9 +411,10 @@ def main(argv=None) -> int:
             result=audit_manifest(args.manifest,args.policy)
         elif args.command=="demo":
             result=demo(args.checkpoint,policy=args.policy,renderer=args.renderer,
-                        expected_sha=args.expected_sha256,report_out=args.report)
+                        expected_sha=args.expected_sha256,report_out=args.report,
+                        resources=args.resources)
         else:
-            result=run(args.policy,args.renderer,args.report)
+            result=run(args.policy,args.renderer,args.report,resources=args.resources)
         print(json.dumps(result,indent=2,sort_keys=True))
         return 0 if result.get("status") not in {"not_verified"} else 2
     except (OSError,ValueError,RuntimeError,KeyError) as exc:
