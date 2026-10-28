@@ -150,22 +150,41 @@ def prepare(checkpoint: Path, output: Path, expected_sha: str | None = None) -> 
     try:
         from export_live_skill_ppo_v2 import export
     except ImportError as exc:
-        raise RuntimeError("canonical exporter missing: copy my_test/scripts/export_live_skill_ppo_v2.py from main") from exc
+        raise RuntimeError("canonical TSKILL2 exporter missing") from exc
+    import torch
+    obj = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    source_policy_type = obj.get("policy_type") if isinstance(obj, dict) else None
     output.parent.mkdir(parents=True, exist_ok=True)
+    export_checkpoint = checkpoint
+    adaptation = None
+    if source_policy_type == "legacy":
+        # One runtime only: wrap 528 movement features into the 546-input
+        # skill-v2 ABI, keeping the legacy movement logits and disabling skills.
+        from legacy_to_skillv2 import adapt
+        adapted_path = output.parent / "adapted_checkpoints" / (
+            f"{checkpoint.stem}_{check_hash[:12]}_skillv2.pt")
+        adaptation = adapt(checkpoint, adapted_path)
+        export_checkpoint = adapted_path
+    elif source_policy_type != "skill":
+        raise ValueError(f"unsupported source policy_type={source_policy_type!r}; expected skill or exact legacy")
     tmp = output.with_name(f".{output.name}.{uuid.uuid4().hex}.tmp")
     try:
-        export(checkpoint, tmp)
-        parity = verify_forward_logits(checkpoint,tmp)
+        export(export_checkpoint, tmp)
+        parity = verify_forward_logits(export_checkpoint,tmp)
         if output.exists():
             if sha256_file(output) != sha256_file(tmp):
                 raise FileExistsError(f"refusing to replace existing different policy: {output}")
             status = "already_identical"
         else:
-            # Atomic, same-volume hardlink: existing output is never overwritten,
-            # and a failed copy cannot leave a partial policy masquerading as valid.
+            # Atomic, same-volume hardlink. Original checkpoint is never edited.
             os.link(tmp, output)
             status = "exported"
-        return {"status": status, "checkpoint":str(checkpoint),"output":str(output), **parity}
+        return {"status": status, "checkpoint":str(checkpoint),"output":str(output),
+                "source_checkpoint_sha256":check_hash,
+                "source_policy_type":source_policy_type,
+                "live_controller_design":"TSKILL2_546_18_3_only",
+                "adaptation":adaptation,
+                **parity}
     finally:
         tmp.unlink(missing_ok=True)
 
@@ -324,7 +343,8 @@ def audit_manifest(path: Path, policy: Path) -> dict:
     return out
 
 
-def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None) -> dict:
+def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None,
+        resources: Path | None = None) -> dict:
     if sys.platform != "win32":
         raise RuntimeError("rendered launcher requires Windows workstation; no fake game fallback")
     policy=Path(policy).resolve()
@@ -332,14 +352,23 @@ def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None) ->
     launcher=HERE / "run_live_ppo_windows.py"
     if not launcher.is_file():
         raise FileNotFoundError("missing actual main-branch run_live_ppo_windows.py")
+    # Validate required rendered assets before launching the game. Without this,
+    # a fatal startup error looks like a model policy with zero decisions.
+    from taisei_resource_doctor import select_resources
+    from run_live_ppo_windows import ROOT, PATHS
+    resource_override = Path(resources).resolve() if resources is not None else None
+    resource_root, resource_report = select_resources(
+        ROOT, PATHS["resources"], resource_override)
     scratch=Path.home()/"AppData"/"Local"/"hermes"/"cache"/"scratch"
     previous={f.resolve() for f in scratch.glob("taisei-live-ppo-*.json")} if scratch.is_dir() else set()
-    proc=subprocess.run([sys.executable,str(launcher),"--renderer",renderer,"--rl-policy",str(policy)],
-                        check=False,cwd=str(HERE.parent))
+    argv=[sys.executable,str(launcher),"--renderer",renderer,"--rl-policy",str(policy)]
+    argv.extend(["--resources", str(resource_root)])
+    proc=subprocess.run(argv, check=False,cwd=str(HERE.parent))
     recent=sorted({f.resolve() for f in scratch.glob("taisei-live-ppo-*.json")}-previous)
     if len(recent)!=1:
         raise RuntimeError(f"cannot identify exactly one new launcher manifest; found {len(recent)}")
     audit=audit_manifest(recent[0],policy)
+    audit["resource_preflight"] = resource_report
     if proc.returncode!=0:
         audit["status"]="not_verified"
         audit["violations"].append("launcher subprocess returned nonzero")
@@ -349,6 +378,32 @@ def run(policy: Path, renderer: str = "gl33", report_out: Path | None = None) ->
             json.dump(audit,f,indent=2,sort_keys=True)
             f.write("\n")
     return audit
+
+
+def demo(checkpoint: Path, *, policy: Path | None = None, renderer: str = "gl33",
+         expected_sha: str | None = None, report_out: Path | None = None,
+         resources: Path | None = None) -> dict:
+    """Convert a trusted skill-v2 .pt and launch the existing rendered game.
+
+    This is the one-command user path: the exported binary is tied to the
+    checkpoint digest and never overwrites a different experiment's output.
+    A real Windows game, its policy loader, and its resources must exist.
+    """
+    checkpoint = Path(checkpoint).resolve()
+    if not checkpoint.is_file():
+        raise FileNotFoundError(f"checkpoint missing: {checkpoint}")
+    checkpoint_sha = sha256_file(checkpoint)
+    if policy is None:
+        policy = HERE.parent / "results" / "w2ctrl" / (
+            f"{checkpoint.stem}_{checkpoint_sha[:12]}_TSKILL2.bin")
+    exported = prepare(checkpoint, policy, expected_sha)
+    if report_out is None:
+        report_out = HERE.parent / "results" / "w2ctrl" / "audits" / (
+            f"{checkpoint.stem}_{uuid.uuid4().hex}.json")
+    result = (run(Path(policy), renderer, report_out) if resources is None else
+              run(Path(policy), renderer, report_out, resources=resources))
+    return {"status": result["status"], "model_conversion": exported,
+            "live_control_audit": result, "audit_file": str(Path(report_out).resolve())}
 
 
 def main(argv=None) -> int:
@@ -364,6 +419,14 @@ def main(argv=None) -> int:
     launch=sub.add_parser("run",help="launch actual Windows build, then audit NEW game log")
     launch.add_argument("policy",type=Path);launch.add_argument("--renderer",default="gl33")
     launch.add_argument("--report",type=Path)
+    launch.add_argument("--resources",type=Path,help="explicit compiled Taisei resource root")
+    single=sub.add_parser("demo",help="ONE COMMAND: convert trusted skill PT and launch/audit Windows Taisei")
+    single.add_argument("checkpoint",type=Path)
+    single.add_argument("--policy",type=Path,help="optional target TSKILL2 path (default: content-addressed results/w2ctrl)")
+    single.add_argument("--expected-sha256",help="optional trusted checkpoint digest")
+    single.add_argument("--renderer",default="gl33")
+    single.add_argument("--report",type=Path)
+    single.add_argument("--resources",type=Path,help="explicit compiled Taisei resource root")
     args=p.parse_args(argv)
     try:
         if args.command=="prepare":
@@ -372,8 +435,12 @@ def main(argv=None) -> int:
             result=parse_policy(args.policy)
         elif args.command=="audit":
             result=audit_manifest(args.manifest,args.policy)
+        elif args.command=="demo":
+            result=demo(args.checkpoint,policy=args.policy,renderer=args.renderer,
+                        expected_sha=args.expected_sha256,report_out=args.report,
+                        resources=args.resources)
         else:
-            result=run(args.policy,args.renderer,args.report)
+            result=run(args.policy,args.renderer,args.report,resources=args.resources)
         print(json.dumps(result,indent=2,sort_keys=True))
         return 0 if result.get("status") not in {"not_verified"} else 2
     except (OSError,ValueError,RuntimeError,KeyError) as exc:
