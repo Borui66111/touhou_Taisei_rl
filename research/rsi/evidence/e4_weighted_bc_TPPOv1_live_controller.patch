@@ -1,0 +1,215 @@
+diff --git a/src/cli.c b/src/cli.c
+--- a/src/cli.c
++++ b/src/cli.c
+@@ -12,6 +12,7 @@
+ #include "cutscenes/scenes.h"
+ #include "difficulty.h"
+ #include "log.h"
++#include "live_ppo.h"
+ #include "plrmodes.h"
+ #include "stageinfo.h"
+ #include "util.h"
+@@ -31,6 +32,7 @@
+ 	OPT_REREPLAY,
+ 	OPT_POPCACHE,
+ 	OPT_UNLOCKALL,
++	OPT_RLPOLICY,
+ };
+ 
+ static void print_help(struct TsOption* opts) {
+@@ -91,6 +93,7 @@
+ 		{{"height",             required_argument,  0, 'H'},            "Set window height", "HEIGHT"},
+ 		{{"vfs-tree",           required_argument,  0, 't'},            "Print the virtual filesystem tree starting from PATH", "PATH"},
+ 		{{"help",               no_argument,        0, 'h'},            "Print help and exit"},
++		{{"rl-policy",          required_argument,  0, OPT_RLPOLICY},   "Use a PPO policy during gameplay", "FILE"},
+ 		{{"version",            no_argument,        0, 'v'},            "Print version and exit"},
+ 		{}
+ 	};
+@@ -254,6 +257,9 @@
+ 			break;
+ 		case OPT_UNLOCKALL:
+ 			a->unlock_all = true;
++			break;
++		case OPT_RLPOLICY:
++			live_ppo_set_policy_path(optarg);
+ 			break;
+ 		case 'W':
+ 			a->width = strtol(optarg, NULL, 10);
+diff --git a/src/live_ppo.c b/src/live_ppo.c
+new file mode 100644
+--- /dev/null
++++ b/src/live_ppo.c
+@@ -0,0 +1,63 @@
++#include "live_ppo.h"
++#include "boss.h"
++#include "global.h"
++#include "log.h"
++#include "player.h"
++#include "projectile.h"
++#include "lasers/laser.h"
++#include "util/sha256.h"
++#include "live_ppo_infer.h"
++#include <stdio.h>
++#include <stdlib.h>
++#define NI LIVE_PPO_NI
++#define NW LIVE_PPO_NW
++#define NA LIVE_PPO_NA
++#define HEADER LIVE_PPO_HEADER
++#define NF (NW*NI+NW+NW*NW+NW+NA*NW+NA)
++#define FILESIZE (HEADER+NF*4)
++static char *path;
++static uint8_t *data;
++static char identity[65];
++static unsigned long n_actions;
++static bool load(void) {
++ if(data) return true; if(!path) return false;
++ FILE *f=fopen(path,"rb"); if(!f) { log_error("RL policy open failed; keeping native human input"); return false; }
++ if(fseek(f,0,SEEK_END)||ftell(f)!=FILESIZE||fseek(f,0,SEEK_SET)) { fclose(f); log_error("RL policy payload size invalid; keeping human input"); return false; }
++ uint8_t *b=malloc(FILESIZE); if(!b||fread(b,1,FILESIZE,f)!=FILESIZE||fgetc(f)!=EOF) { free(b); fclose(f); log_error("RL policy read failed; keeping human input"); return false; } fclose(f);
++ const uint8_t magic[8]="TPPOv1"; if(memcmp(b,magic,8)||live_ppo_u32(b+8)!=528||live_ppo_u32(b+12)!=128||live_ppo_u32(b+16)!=18) { free(b); log_error("RL policy header invalid; keeping human input"); return false; }
++ uint8_t digest[SHA256_BLOCK_SIZE]; sha256_digest(b,FILESIZE,digest,sizeof(digest));
++ static const uint8_t expected[32]={0xaf,0x96,0xb9,0xf2,0xe1,0xfe,0xf7,0x6f,0x9b,0xc6,0xa0,0xa6,0x17,0xcf,0x29,0x68,0x41,0xfb,0xf3,0x86,0x18,0x70,0xd9,0xb8,0xa6,0xd4,0xb0,0x2a,0x05,0xef,0x3b,0x13};
++ if(memcmp(digest,expected,sizeof(expected))) { free(b); log_error("RL policy binary SHA256 mismatch; keeping human input"); return false; }
++ const char hex[]="0123456789abcdef"; for(int i=0;i<32;i++) { identity[2*i]=hex[b[20+i]>>4]; identity[2*i+1]=hex[b[20+i]&15]; } identity[64]=0;
++ static_assert(SHA256_BLOCK_SIZE == 32);
++ if(strcmp(identity,"06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc")) { free(b); log_error("RL checkpoint SHA256 identity mismatch; keeping human input"); return false; }
++ data=b; log_info("RL policy loaded checkpoint_sha256=%s",identity); return true;
++}
++static int infer(const float x[NI]) {
++ float logits[NA]; live_ppo_infer_logits(data,x,logits);
++ int best=0; for(int i=1;i<NA;i++) if(logits[i]>logits[best]) best=i; return best;
++}
++typedef struct { double approach, distance; Projectile *p; size_t order; } Threat;
++static int cmpthreat(const void *a,const void *b) { const Threat*x=a,*y=b; if(x->approach!=y->approach)return x->approach<y->approach?-1:1; if(x->distance!=y->distance)return x->distance<y->distance?-1:1; return x->order<y->order?-1:x->order>y->order; }
++typedef struct PPO_LaserSample { double d; float x,y,w; size_t order; } PPO_LaserSample;
++static PPO_LaserSample lps[512]; static int nlps;
++static void *collect(Laser *l,const LaserTraceSample*s,void*a) { (void)a; if(!l->collision_active||!s->segment||nlps>=512)return NULL; PPO_LaserSample*q=&lps[nlps]; q->x=creal(s->pos)-creal(global.plr.pos); q->y=cimag(s->pos)-cimag(global.plr.pos); q->d=hypot(q->x,q->y); q->w=(s->segment->width.a+(s->segment->width.b-s->segment->width.a)*s->segment_param)*0.5f; q->order=(size_t)nlps++; return NULL; }
++static int cmplp(const void*a,const void*b) { const PPO_LaserSample*x=a,*y=b; if(x->d!=y->d)return x->d<y->d?-1:1; return x->order<y->order?-1:x->order>y->order; }
++static void observe(float*x) {
++ memset(x,0,NI*sizeof(*x)); Player*p=&global.plr; int k=0;
++ x[k++]=creal(p->pos)/480; x[k++]=cimag(p->pos)/560; x[k++]=creal(p->velocity)/20; x[k++]=cimag(p->velocity)/20; x[k++]=(p->inputflags&INFLAG_FOCUS)!=0; x[k++]=p->lives; x[k++]=p->bombs; x[k++]=player_is_vulnerable(p)?0:1;
++ Boss*b=global.boss; Attack*a=b?b->current:NULL; x[k++]=b!=NULL; x[k++]=b?(creal(b->pos)-creal(p->pos))/480:0; x[k++]=b?(cimag(b->pos)-cimag(p->pos))/560:0; x[k++]=a&&a->maxhp>0?a->hp/a->maxhp:0; x[k++]=a?(float)(a->type==AT_Normal?1:a->type==AT_Move?2:a->type==AT_Spellcard?3:a->type==AT_SurvivalSpell?4:a->type==AT_ExtraSpell?5:0):0; x[k++]=a&&a->timeout>0?fmaxf(0,a->starttime+a->timeout-global.frames)/3600:0;
++ Threat th[4096]; int nt=0; size_t order=0; for(Projectile*q=global.projs.first;q&&nt<4096;q=q->next,++order) if(q->type==PROJ_ENEMY) { double dx=creal(q->pos-p->pos),dy=cimag(q->pos-p->pos),vx=creal(q->move.velocity-p->velocity),vy=cimag(q->move.velocity-p->velocity),v2=vx*vx+vy*vy,t=v2>1e-9?fmin(30,fmax(0,-(dx*vx+dy*vy)/v2)):0; th[nt++]=(Threat){hypot(dx+vx*t,dy+vy*t),hypot(dx,dy),q,order}; }
++ qsort(th,nt,sizeof(*th),cmpthreat); for(int i=0;i<64;i++) { if(i<nt) { Projectile*q=th[i].p; x[k++]=(creal(q->pos)-creal(p->pos))/480; x[k++]=(cimag(q->pos)-cimag(p->pos))/560; x[k++]=creal(q->move.velocity)/20; x[k++]=cimag(q->move.velocity)/20; x[k++]=creal(q->collision_size)/30; x[k++]=cimag(q->collision_size)/30; x[k++]=1; } else k+=7; }
++ nlps=0; for(Laser*l=global.lasers.first;l;l=l->next)if(l->collision_active)laser_trace(l,8,collect,NULL); qsort(lps,nlps,sizeof(*lps),cmplp); for(int i=0;i<16;i++) { if(i<nlps) { x[k++]=lps[i].x/480; x[k++]=lps[i].y/560; x[k++]=lps[i].w/30; x[k++]=1; } else k+=4; }
++ int np=0,nl=0; for(Projectile*q=global.projs.first;q;q=q->next)if(q->type!=PROJ_PARTICLE)np++; for(Laser*l=global.lasers.first;l;l=l->next)nl++; x[k++]=np/1000.0f; x[k++]=nl/50.0f;
++}
++void live_ppo_set_policy_path(const char*p) { free(path); path=p?strdup(p):NULL; }
++void live_ppo_start(uint64_t seed,uint16_t stage_id,int difficulty,const char*mode,bool practice) { n_actions=0; if(path) log_info("RL run seed=%llu stage=%u difficulty=%d mode=%s practice=%d config_source=native",(unsigned long long)seed,stage_id,difficulty,mode?mode:"unknown",practice); }
++bool live_ppo_apply_action(void) {
++ if(!path||!load())return false; float x[NI]; observe(x); int a=infer(x); uint32_t d=INFLAG_SHOT; switch(a%9) { case 0:break;case 1:d|=INFLAG_UP;break;case 2:d|=INFLAG_DOWN;break;case 3:d|=INFLAG_LEFT;break;case 4:d|=INFLAG_RIGHT;break;case 5:d|=INFLAG_UP|INFLAG_LEFT;break;case 6:d|=INFLAG_UP|INFLAG_RIGHT;break;case 7:d|=INFLAG_DOWN|INFLAG_LEFT;break;case 8:d|=INFLAG_DOWN|INFLAG_RIGHT;break; } if(a>=9)d|=INFLAG_FOCUS;
++ const struct{uint32_t bit;KeyIndex key;} keys[]={{INFLAG_UP,KEY_UP},{INFLAG_DOWN,KEY_DOWN},{INFLAG_LEFT,KEY_LEFT},{INFLAG_RIGHT,KEY_RIGHT},{INFLAG_FOCUS,KEY_FOCUS},{INFLAG_SHOT,KEY_SHOT}};
++ for(size_t i=0;i<ARRAY_SIZE(keys);i++) { bool was=(global.plr.inputflags&keys[i].bit)!=0,want=(d&keys[i].bit)!=0; if(was!=want)player_event(&global.plr,NULL,&global.replay.output,want?EV_PRESS:EV_RELEASE,keys[i].key); }
++ ++n_actions; log_info("RL decision frame=%d action=%d action_count=%lu checkpoint_sha256=%s",global.frames,a,n_actions,identity); return true;
++}
++void live_ppo_finish(const char*outcome) { if(n_actions)log_info("RL policy outcome=%s frames=%d actions=%lu checkpoint_sha256=%s",outcome,global.frames,n_actions,identity); }
+diff --git a/src/live_ppo.h b/src/live_ppo.h
+new file mode 100644
+--- /dev/null
++++ b/src/live_ppo.h
+@@ -0,0 +1,7 @@
++#pragma once
++#include "taisei.h"
++
++void live_ppo_set_policy_path(const char *path);
++void live_ppo_start(uint64_t seed, uint16_t stage_id, int difficulty, const char *mode, bool practice);
++bool live_ppo_apply_action(void);
++void live_ppo_finish(const char *outcome);
+diff --git a/src/live_ppo_infer.h b/src/live_ppo_infer.h
+new file mode 100644
+--- /dev/null
++++ b/src/live_ppo_infer.h
+@@ -0,0 +1,46 @@
++#pragma once
++#include <stdint.h>
++#include <string.h>
++#include <math.h>
++
++#define LIVE_PPO_NI 528
++#define LIVE_PPO_NW 128
++#define LIVE_PPO_NA 18
++#define LIVE_PPO_HEADER 52
++
++static inline uint32_t live_ppo_u32(const uint8_t *p) {
++    return p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
++}
++
++static inline float live_ppo_f32(const uint8_t *p) {
++    uint32_t u = live_ppo_u32(p);
++    float f;
++    memcpy(&f, &u, sizeof(f));
++    return f;
++}
++
++static inline void live_ppo_infer_logits(const uint8_t *data, const float x[LIVE_PPO_NI], float out[LIVE_PPO_NA]) {
++    const uint8_t *p = data + LIVE_PPO_HEADER;
++    const uint8_t *w1 = p; p += LIVE_PPO_NW * LIVE_PPO_NI * 4;
++    const uint8_t *b1 = p; p += LIVE_PPO_NW * 4;
++    const uint8_t *w2 = p; p += LIVE_PPO_NW * LIVE_PPO_NW * 4;
++    const uint8_t *b2 = p; p += LIVE_PPO_NW * 4;
++    const uint8_t *wa = p; p += LIVE_PPO_NA * LIVE_PPO_NW * 4;
++    const uint8_t *ba = p;
++    float h1[LIVE_PPO_NW], h2[LIVE_PPO_NW];
++    for(int i = 0; i < LIVE_PPO_NW; ++i) {
++        double s = live_ppo_f32(b1 + 4 * i);
++        for(int j = 0; j < LIVE_PPO_NI; ++j) s += (double)live_ppo_f32(w1 + 4 * (i * LIVE_PPO_NI + j)) * x[j];
++        h1[i] = tanhf((float)s);
++    }
++    for(int i = 0; i < LIVE_PPO_NW; ++i) {
++        double s = live_ppo_f32(b2 + 4 * i);
++        for(int j = 0; j < LIVE_PPO_NW; ++j) s += (double)live_ppo_f32(w2 + 4 * (i * LIVE_PPO_NW + j)) * h1[j];
++        h2[i] = tanhf((float)s);
++    }
++    for(int i = 0; i < LIVE_PPO_NA; ++i) {
++        double s = live_ppo_f32(ba + 4 * i);
++        for(int j = 0; j < LIVE_PPO_NW; ++j) s += (double)live_ppo_f32(wa + 4 * (i * LIVE_PPO_NW + j)) * h2[j];
++        out[i] = (float)s;
++    }
++}
+diff --git a/src/meson.build b/src/meson.build
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -79,6 +79,7 @@
+     'list.c',
+     'log_sdl.c',
+     'log.c',
++    'live_ppo.c',
+     'move.c',
+     'player.c',
+     'plrmodes.c',
+diff --git a/src/stage.c b/src/stage.c
+--- a/src/stage.c
++++ b/src/stage.c
+@@ -18,6 +18,7 @@
+ #include "i18n/i18n.h"
+ #include "lasers/draw.h"
+ #include "log.h"
++#include "live_ppo.h"
+ #include "memory/scratch.h"
+ #include "menu/gameovermenu.h"
+ #include "menu/ingamemenu.h"
+@@ -714,6 +715,7 @@
+ 	}
+ 
+ 	player_fix_input(&global.plr, &global.replay.output);
++	if(!fstate->paused && global.gameover==GAMEOVER_NONE && !stage_is_skip_mode() && !should_skip_frame(fstate)) live_ppo_apply_action();
+ 	player_applymovement(&global.plr);
+ }
+ 
+@@ -1303,6 +1305,7 @@
+ 	start_override_pending = false;
+ 
+ 	rng_seed(&global.rand_game, seed);
++	live_ppo_start(seed, stage->id, global.diff, global.plr.mode ? global.plr.mode->name : "unknown", global.is_practice_mode);
+ 
+ 	if(global.replay.input.replay) {
+ 		player_init(&global.plr);
+@@ -1371,6 +1374,8 @@
+ 		assume(quicksave != NULL);
+ 	}
+ 
++	live_ppo_finish(global.gameover == GAMEOVER_WIN ? "win" : global.gameover == GAMEOVER_RESTART ? "restart" : global.gameover == GAMEOVER_DEFEAT ? "defeat" : global.gameover == GAMEOVER_ABORT ? "abort_or_quit" : "other");
++
+ 	if(global.replay.output.replay) {
+ 		if(is_quickload) {
+ 			// rollback this stage, as we're about to replay it
