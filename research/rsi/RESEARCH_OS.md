@@ -123,3 +123,23 @@ The **primary backend is local computation**, not GitHub Actions. The tested coo
 The packaged runnable offline environment is persisted in the user Library at `/AI/Taisei_RSI_Local_Automation_2026-10-28/Taisei_RSI_Local_Automation_v2_2026-10-28.zip` (SHA-256 `c2252a50a18ebc350750596083e730abd9517c79e8cea2cd627404e4fc611b95`). Each scheduled invocation must materialize/verify it if no previous local workspace exists; a temporary assistant container cannot be assumed to stay alive between schedule executions. On 2026-10-28, 13 local-coordinator and 6 E6 source tests passed, and independent bundle extraction and hash verification passed. The authentic fork at `789200ff255c681b3ed4230a3f26f0b8c12c78fe` remains inaccessible (original remote 404 and local DNS failure); fresh game training, native replay and video capture are **not** verified. Evidence: `research/rsi/evidence/local_operator_debug_20261028_v2.json`, ledger event `T-20261027-47`.
 
 **Stopping rule:** Do not endlessly repeat unavailable-source Git clones/pip installs or blindly repeat previously regressed E3 training. While blocked, perform independent offline analysis and source recovery; notify a precise single decision when source access requires the user. Once native E5 determinism and captured-renderer parity pass, prioritize an episode-diverse teacher demonstration and a bounded, matched-seed E7 challenger, not superficial CI success.
+
+## 11. Learning from agent interaction and user corrections
+
+**Research dimension:** the research agent itself, not only PPO weights and hyperparameters, is an RSI target. User corrections, contradictory evidence, repeated blocked attempts, invalid replays, proxy-success failures, needless human escalation and successful recovery are valuable supervision for the agent's **decision process**.
+
+**Canonical reusable meta-skill:** [AGENT_EXPERIENCE_LEARNING.md](AGENT_EXPERIENCE_LEARNING.md), mirrored to UKS Methods as `Agent_Experience_Lesson_Capture_and_Meta_Learning_2026-10-28.md`. Case-study AIF-002 `AI_Failure_Taisei_RSI_Longitudinal_2026-10-28.md` in UKS catalogs the progressive user corrections; machine-readable proposed tests `taisei_agent_failure_benchmark_v1.jsonl` and companion rubric reside in UKS Methods. A lesson stored is **not** proof the agent learned.
+
+The learning architecture is **G0 raw trajectory → G1 evidence-scoped failure/success case → G2 transferable skill/operator → G3 adversarial evaluation before behavioral promotion**.
+
+After a meaningful correction, experiment failure or milestone:
+
+1. Record the prior agent belief/choice, actual user goal, relevant source/branch/environment, timestamp, action and observed outcome in the append-only native project ledger, *without hindsight rewriting*.
+2. Identify the earliest avoidable divergence and separate agent error from genuine access/authorization constraints; treat mechanism as a hypothesis, not a proven causal story.
+3. Distill *why* an approach failed, the trigger for reuse, a better ACT/ASK/VERIFY/CORRECT/REPLAN/STOP decision, counterfactual, exception, stop condition and evidence source. Deduplicate with existing UKS lessons.
+4. Define a behavior-level benchmark including a confusing alternative and a correct human-escalation control. Retrieve the rule before an analogous future action; choose an appropriately bounded next experiment.
+5. Compare future decisions, evidence calibration, user rework, repeated attempts, and target-task outcomes. Preserve failures and retire ineffective rules. Do not treat longer prompts, successful source unit tests, or archival notes as effective meta-learning until validated on held-out work.
+
+**Cross-domain use:** Taisei proxy-vs-native success, MobileJail checker-vs-executed attack outcome, FastBench model/runner-vs-real safety evidence and general UKS stale-source work. A robust agent should learn the abstraction and detect it in a differently worded setting rather than require a new user correction each time.
+
+**State on 2026-10-28:** Method and AIF-002 case persisted, 16 candidate benchmark scenarios authored; no independent agent cohort has yet been scored on these lessons, and full authentic native Taisei train→rendered replay→visual inspection remains blocked on the exact upstream fork. Those gaps must remain visible.
