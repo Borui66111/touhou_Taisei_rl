@@ -1,5 +1,6 @@
 """Source-level replay structure tests (synthetic fixtures are not gameplay)."""
 import hashlib
+import shutil
 import importlib.util
 import subprocess
 import struct
@@ -15,6 +16,14 @@ EMPTY=bytes.fromhex('28b52ffd2000010000')
 
 
 def zstd(raw):
+    try:
+        import zstandard
+    except ImportError:
+        zstandard = None
+    if zstandard is not None:
+        return zstandard.ZstdCompressor(level=3).compress(raw)
+    if shutil.which('zstd') is None:
+        raise unittest.SkipTest('full replay fixtures require zstandard or zstd CLI')
     p=subprocess.run(['zstd','-q','-c','-3'],input=raw,capture_output=True,check=True)
     return p.stdout
 
