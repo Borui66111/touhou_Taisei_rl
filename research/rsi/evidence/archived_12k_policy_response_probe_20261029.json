@@ -1,0 +1,90 @@
+{
+  "source_e3_teacher_samples": 12000,
+  "source_feature_dimension": 528,
+  "source": "archived E3 demonstrations, one complete episode plus partial second episode",
+  "skill_feature_suffix": "18 synthetic zero features; out-of-distribution diagnostic; not an authenticated E1 game state",
+  "real_game_execution": false,
+  "real_replay_visual_inspection": false,
+  "models": {
+    "E1_challenger": {
+      "sha256": "be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478",
+      "policy_type": "skill",
+      "input_dimension": 546,
+      "action_histogram": {
+        "1": 2938,
+        "3": 2587,
+        "8": 1178,
+        "10": 457,
+        "11": 83,
+        "12": 241,
+        "13": 1694,
+        "16": 2822
+      },
+      "top_action": 1,
+      "top_action_fraction": 0.2448,
+      "distinct_actions_chosen": 8,
+      "action_change_fraction_across_sequence": 0.0387,
+      "teacher_label_agreement_not_behavior_metric": 0.0219,
+      "mean_entropy_nats": 2.7371,
+      "mean_max_probability": 0.1321
+    },
+    "E1_control": {
+      "sha256": "5cf7eb84b6a8c56825c25527162691179c057850963e38178d4dbe3fe51d995f",
+      "policy_type": "skill",
+      "input_dimension": 546,
+      "action_histogram": {
+        "15": 12000
+      },
+      "top_action": 15,
+      "top_action_fraction": 1.0,
+      "distinct_actions_chosen": 1,
+      "action_change_fraction_across_sequence": 0.0,
+      "teacher_label_agreement_not_behavior_metric": 0.0147,
+      "mean_entropy_nats": 2.7258,
+      "mean_max_probability": 0.1193
+    },
+    "E4_weighted_BC": {
+      "sha256": "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc",
+      "policy_type": "legacy",
+      "input_dimension": 528,
+      "action_histogram": {
+        "0": 8425,
+        "1": 133,
+        "3": 162,
+        "4": 135,
+        "6": 17,
+        "10": 127,
+        "11": 252,
+        "12": 1239,
+        "13": 1148,
+        "14": 77,
+        "15": 143,
+        "16": 73,
+        "17": 69
+      },
+      "top_action": 0,
+      "top_action_fraction": 0.7021,
+      "distinct_actions_chosen": 13,
+      "action_change_fraction_across_sequence": 0.1025,
+      "teacher_label_agreement_not_behavior_metric": 0.8669,
+      "mean_entropy_nats": 0.5877,
+      "mean_max_probability": 0.839
+    }
+  },
+  "teacher_action_histogram": {
+    "0": 8321,
+    "1": 156,
+    "3": 124,
+    "4": 138,
+    "5": 16,
+    "6": 24,
+    "10": 109,
+    "11": 123,
+    "12": 1173,
+    "13": 1097,
+    "14": 171,
+    "15": 177,
+    "16": 194,
+    "17": 177
+  }
+}
