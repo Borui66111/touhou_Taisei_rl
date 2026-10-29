@@ -315,6 +315,45 @@ def audit_lines(lines: list[str], expected_sha: str) -> dict:
             "gameplay_learning":"not_established"}
 
 
+
+def replay_writer_diagnostics(lines: list[str]) -> dict:
+    """Classify optionally instrumented Taisei replay-writer output.
+
+    The C instrumenter emits BEGIN/END; ordinary builds emit neither.
+    This does not infer gameplay success from a writer's return code.
+    """
+    begins, ends, errors = [], [], []
+    for raw in lines:
+        message = _message(raw)
+        if "RSI_REPLAY_WRITE_BEGIN" in message:
+            begins.append(_fields(message))
+        if "RSI_REPLAY_WRITE_END" in message:
+            ends.append(_fields(message))
+        if ("RSI_REPLAY_WRITE_INVALID" in message or
+            any(token in message.lower() for token in
+                ("zstd_compressstream2() failed", "sdl_writeio() returned", "vfs error:"))):
+            errors.append(message)
+    if not begins and not ends and not errors:
+        return {"status":"not_instrumented_or_no_writer_logs","write_begins":0,
+                "write_ends":0,"diagnostic_errors":[]}
+    if errors or len(begins)!=len(ends):
+        status="writer_error_or_incomplete"
+    else:
+        status="writer_reported_without_structural_validation"
+        for b, e in zip(begins, ends):
+            try:
+                stages = int(e["stages"])
+                events = int(e["events"])
+                written = int(e["bytes"])
+                ok = e["write_ok"] == '1' and e["close_ok"] == '1'
+                if stages < 1 or events < 1 or written <= 44 or not ok:
+                    status="writer_error_or_incomplete"
+            except (ValueError, KeyError):
+                status="writer_error_or_incomplete"
+    return {"status":status,"write_begins":len(begins),"write_ends":len(ends),
+            "writer_events":ends,"diagnostic_errors":errors}
+
+
 def audit_manifest(path: Path, policy: Path) -> dict:
     policy = Path(policy).resolve()
     policy_info = parse_policy(policy)
@@ -329,6 +368,7 @@ def audit_manifest(path: Path, policy: Path) -> dict:
     if not isinstance(capture.get("relevant_lines"),list):
         raise ValueError("missing launcher fresh-log content")
     out=audit_lines(capture["relevant_lines"], policy_info["checkpoint_sha256"])
+    out["replay_writer_diagnostics"] = replay_writer_diagnostics(capture["relevant_lines"])
     # Independent replay integrity gate. A "Saving" log entry proves neither
     # gameplay events nor playability; keep control attribution separate.
     from inspect_rendered_tsr import inspect as inspect_replay
@@ -348,6 +388,8 @@ def audit_manifest(path: Path, policy: Path) -> dict:
         "failed_replay" if replay_gate["status"].startswith(("invalid_", "truncated_", "missing_", "replay_"))
         else "requires_playback_and_visual_review" if replay_gate["status"] == "header_plausible_full_decode_required"
         else "no_verified_replay")
+    if out["replay_writer_diagnostics"]["status"] == "writer_error_or_incomplete":
+        out["rsi_evidence_status"] = "failed_replay"
     out.update({"launcher_manifest":str(Path(path).resolve()),
                 "policy_sha256":policy_info["policy_sha256"],
                 "checkpoint_sha256":policy_info["checkpoint_sha256"],
