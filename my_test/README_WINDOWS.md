@@ -51,6 +51,19 @@ py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e4_weig
 
 **If Taisei reports `Required atlas portraits could not be loaded`:** the error is a game **resource initialization failure**, not a model architecture failure. The launcher now checks the atlas before starting. Run `py -3.9 .\scripts\taisei_resource_doctor.py` to locate a valid compiled resource root; if necessary, supply `--resources 'C:\actual\matching\game\resources'` (replace with a verified real path). If none contains the atlas, rebuild/regenerate matching game assets first. The separate `vswhere.exe` warning did not cause the observed fatal atlas error. Do not copy assets from an unrelated game revision.
 
+### Replay serializer diagnostics (2026-10-29)
+
+Two separately saved local TSRs were identical 44-byte files with **zero decoded metadata and zero input events**. This is consistent with an **empty compressed serializer output**, not proof that no stage was played. The stock `Saving...` log happens before writing. The updated launcher retains fresh `RSI_REPLAY_WRITE_*`, SDL and Zstd error lines for attribution. A read-only full decoder is included in `research/rsi/replay_forensics.py`:
+
+```powershell
+# From repository root, supply the actual saved replay file path
+py -3.9 research/rsi/replay_forensics.py 'C:\path\to\run.tsr' --log "$env:APPDATA\taisei\log.txt"
+# Full nonempty Zstandard decoding requires this optional dependency:
+py -3.9 -m pip install zstandard
+```
+
+**For local worker diagnosing the next run only:** `research/rsi/instrument_replay_writer.py` can patch the **exact C source used by the existing rl_skill_v2 game** to log the replay's stage count, event count, final byte count and writer-close status. Run it without `--apply` first, confirm the reported C path, then use `--apply` only with a clean source checkout and rebuild the existing game. The tool creates `replay.c.rsi-preinstrument-backup` and refuses unfamiliar source signatures. **It does not repair the writer or prove replay playability.** See `research/rsi/REPLAY_RSI_DEBUG_20261029.md` on the canonical research branch for exact instructions and limits. Preserve original Taisei logs, new W2CTRL manifest, and genuine rendered video/screenshots while debugging.
+
 **Game choice:** open-source [Taisei](https://github.com/taisei-project/taisei) and the `taisei-sim` headless version of its native game logic; this is not a hand-made toy game.
 
 **Platform note:** the upstream headless build documents GNU/Linux support; WSL2 Ubuntu is the optional route for headless training below. Separately, this local `my_test` workbench contains experimental Windows rendered-game builds and a PPO export. They are not automatically present in a fresh Git clone or remote collaboration copy, and do not establish official Windows headless support, parity, or performance.
