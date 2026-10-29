@@ -1,0 +1,29 @@
+{
+  "schema": "taisei_replay_rsi_debug_20261029_v1",
+  "date": "2026-10-29",
+  "git_branch": "research/rsi-automation-v1",
+  "writer_root_cause": "not_conclusively_identified; empty compressed metadata also indicates serializer or IO failure",
+  "source_reference": "taisei-project/taisei public master source reviewed on 2026-10-29",
+  "files": [
+    {
+      "file": "taisei_20261028_16-34-53-521_stg1_reimuA_easy.tsr",
+      "size": 44,
+      "sha256": "3eb7427f4c3372d997c3718c699803c16bb42fead5a0f644ff800bed48958943"
+    },
+    {
+      "file": "taisei_20261028_17-33-21-938_stg1_reimuA_easy.tsr",
+      "size": 44,
+      "sha256": "3eb7427f4c3372d997c3718c699803c16bb42fead5a0f644ff800bed48958943"
+    }
+  ],
+  "tests": {
+    "new_source_replay_tests_passed": 23,
+    "existing_w2ctrl_tests_passed": 78,
+    "existing_optional_tests_skipped": 2
+  },
+  "actual_native_game_run": false,
+  "actual_rendered_replay_inspected": false,
+  "real_replay_writer_compiled": false,
+  "legacy_actor_training_promoted": false,
+  "next": "Run opt-in writer instrumentation on the exact local Taisei source and capture real output/stage/event metadata alongside genuine rendered MP4 or screenshots."
+}
