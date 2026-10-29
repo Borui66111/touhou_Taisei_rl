@@ -13,7 +13,7 @@ This was cross-checked against **public** `taisei-project/taisei` 2026-10-29 mas
 - Added `research/rsi/replay_forensics.py`: read-only binary v14 Zstd decoder, stage/event count and order verification with bounded size, and optional native log filtering. It returns a *distinct* status for unavailable decoder; full structural decode is not proof of playback.
 - Added `research/rsi/instrument_replay_writer.py`: **opt-in and exact-context** backup-producing patcher for an existing `src/replay/replay.c` checkout. Emits `RSI_REPLAY_WRITE_BEGIN` and `RSI_REPLAY_WRITE_END` with stage/event counts, bytes written, and write/close success; logs `RSI_REPLAY_WRITE_INVALID` on obviously invalid results. It does not repair the compression implementation.
 - Extended `my_test/scripts/w2ctrl.py` source-level audit to separate **logged RL control** from **replay-writer correctness**. If a writer log reports invalid or incomplete output, the RSI evidence status is `failed_replay` even if the controller made accepted decisions.
-- On current local Python environment, existing W2CTRL regression suite **78/78** (2 optional tests skipped); new replay forensic/instrumentation suite **23/23**. Synthetic fixtures used for positive replay decoder tests are **not actual game recordings**.
+- On current local Python environment, existing W2CTRL suite **78 cases: 76 passed, 2 optional skipped**; new replay forensic/instrumentation suite **23/23 passed**. Synthetic fixtures used for positive replay decoder tests are **not actual game recordings**.
 
 ### Windows local-worker next diagnostic commands
 
