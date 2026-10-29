@@ -39,6 +39,10 @@ class PatchTests(unittest.TestCase):
   p=self.p.with_name('replay.c.rsi-preinstrument-backup');p.write_text('existing')
   self.assertEqual(m.apply(self.p)['status'],'backup_already_exists_refuse_overwrite')
   self.assertEqual(self.p.read_text(),EXCERPT)
+ def test_crlf_source_refused_without_normalization(self):
+  self.p.write_bytes(EXCERPT.replace('\n','\r\n').encode())
+  self.assertEqual(m.inspect(self.p)['status'],'source_signature_mismatch')
+  self.assertFalse(self.p.with_name('replay.c.rsi-preinstrument-backup').exists())
  def test_missing_source(self):
   self.assertEqual(m.inspect(Path(self.t.name)/'missing.c')['status'],'missing_source')
  def test_duplicate_needles_refused(self):
