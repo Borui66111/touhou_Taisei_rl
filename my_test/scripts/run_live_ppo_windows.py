@@ -96,7 +96,7 @@ def _read_appended_log(snapshot):
 
 
 _LOG_ENVELOPE_RE = re.compile(r"^\d+\s+[A-Z]+\s+\S+\s+[^:]+:\s+(.*?)\s+\[[^]]+\]$")
-_LOG_RELEVANT_RE = re.compile(r"\b(?:RL skill-v2 policy loaded |RL run |RL decision |RL policy outcome=|Saving )")
+_LOG_RELEVANT_RE = re.compile(r"\b(?:RL skill-v2 policy loaded |RL run |RL decision |RL policy outcome=|Saving |RSI_REPLAY_WRITE_(?:BEGIN|END|INVALID)|ZSTD_compressStream2\(\) failed|SDL_WriteIO\(\) returned|VFS error:|Too many events in replay|No stages in replay|No events in stage)", re.IGNORECASE)
 
 
 def _parse_log_lines(lines, expected_checkpoint_sha, appdata_taisei=None):
