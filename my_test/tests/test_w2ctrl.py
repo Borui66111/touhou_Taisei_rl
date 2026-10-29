@@ -238,6 +238,49 @@ class PortableTests(unittest.TestCase):
                     w.demo(Path(tmp)/'missing.pt')
             fn.assert_not_called()
 
+    def test_replay_writer_diagnostics_positive_but_not_gameplay(self):
+        lines=[
+            'RSI_REPLAY_WRITE_BEGIN stages=1 events=44',
+            'RSI_REPLAY_WRITE_END stages=1 events=44 bytes=800 write_ok=1 close_ok=1',
+        ]
+        r=w.replay_writer_diagnostics(lines)
+        self.assertEqual(r['status'],'writer_reported_without_structural_validation')
+
+    def test_replay_writer_diagnostics_empty_stream(self):
+        lines=['RSI_REPLAY_WRITE_BEGIN stages=1 events=24',
+               'RSI_REPLAY_WRITE_END stages=1 events=24 bytes=44 write_ok=1 close_ok=1']
+        r=w.replay_writer_diagnostics(lines)
+        self.assertEqual(r['status'],'writer_error_or_incomplete')
+        self.assertEqual(r['writer_events'][0]['events'],'24')
+
+    def test_replay_writer_missing_end(self):
+        r=w.replay_writer_diagnostics(['RSI_REPLAY_WRITE_BEGIN stages=1 events=12'])
+        self.assertEqual(r['status'],'writer_error_or_incomplete')
+
+    def test_replay_writer_sdl_error_preserved(self):
+        r=w.replay_writer_diagnostics(['SDL_WriteIO() returned 0; expected 22'])
+        self.assertEqual(r['status'],'writer_error_or_incomplete')
+        self.assertEqual(len(r['diagnostic_errors']),1)
+
+    def test_replay_writer_no_instrumentation_not_falsely_error(self):
+        r=w.replay_writer_diagnostics(log_lines(1,self.sha))
+        self.assertEqual(r['status'],'not_instrumented_or_no_writer_logs')
+
+    def test_instrumented_manifest_marks_failed_save(self):
+        with tempfile.TemporaryDirectory() as temp:
+            manifest=Path(temp)/'manifest.json'
+            lines=log_lines(1,self.sha)+[
+              'RSI_REPLAY_WRITE_BEGIN stages=1 events=15',
+              'RSI_REPLAY_WRITE_END stages=1 events=15 bytes=44 write_ok=1 close_ok=1']
+            m={'sha256':{'policy':w.sha256_file(self.policy),'game':'1'*64},
+               'policy_metadata':{'checkpoint_sha256':self.sha},
+               'log_capture':{'status':'captured','relevant_lines':lines},
+               'status':'complete','exit_status':0}
+            manifest.write_text(json.dumps(m))
+            r=w.audit_manifest(manifest,self.policy)
+            self.assertEqual(r['status'],'matched_logged_control')
+            self.assertEqual(r['rsi_evidence_status'],'failed_replay')
+
     def test_empty_replay_both_zstd_sections_rejected(self):
         from inspect_rendered_tsr import inspect
         raw=bytes.fromhex('686f6e6fe29da4756d690e8001050000002200000028b52ffd20000100000000000028b52ffd200001000069')
