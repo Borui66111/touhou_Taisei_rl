@@ -51,7 +51,7 @@ def inspect(source: Path):
     if not source.is_file():
         return {"status":"missing_source","source":str(source)}
     try:
-        text=source.read_text(encoding="utf-8")
+        text=source.read_bytes().decode("utf-8")
     except UnicodeError:
         return {"status":"non_utf8_source","source":str(source)}
     if MARKER in text:
@@ -71,14 +71,15 @@ def apply(source: Path):
     backup=source.with_name(source.name+'.rsi-preinstrument-backup')
     if backup.exists():
         return {**result,"status":"backup_already_exists_refuse_overwrite"}
-    old=source.read_text(encoding="utf-8")
+    old=source.read_bytes().decode("utf-8")
     new=old.replace(NEEDLE, REPLACEMENT)
     assert new!=old and new.count(MARKER)==1
     # Create exclusive backup first and never overwrite a prior original.
     with backup.open('x',encoding='utf-8',newline='') as out:
         out.write(old)
     try:
-        source.write_text(new,encoding='utf-8',newline='')
+        with source.open("w",encoding="utf-8",newline="") as stream:
+            stream.write(new)
     except OSError:
         # Original backup remains; source must be repaired manually if write failed.
         raise
