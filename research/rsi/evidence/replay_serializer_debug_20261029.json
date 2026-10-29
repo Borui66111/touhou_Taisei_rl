@@ -18,8 +18,11 @@
   ],
   "tests": {
     "new_source_replay_tests_passed": 23,
-    "existing_w2ctrl_tests_passed": 78,
-    "existing_optional_tests_skipped": 2
+    "existing_w2ctrl_tests_passed": 76,
+    "existing_optional_tests_skipped": 2,
+    "existing_w2ctrl_test_cases": 78,
+    "total_cases": 101,
+    "total_passed": 99
   },
   "actual_native_game_run": false,
   "actual_rendered_replay_inspected": false,
