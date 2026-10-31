@@ -71,10 +71,10 @@ def candidate_directories(workbench: Path, configured: Path) -> list[Path]:
 
 def select_resources(workbench: Path, configured: Path,
                      override: Path | None = None) -> tuple[Path, dict]:
-    """Preserve existing valid config; resolve exactly one alternate if needed.
+    """Preserve valid config; require an explicit choice for any alternate.
 
-    If multiple alternates exist, require an explicit choice rather than
-    silently mixing assets from incompatible game builds.
+    Presence of the required atlas does not prove that an alternate root matches
+    the executable, so known candidates are reported but never auto-selected.
     """
     if override is not None:
         report = inspect_resources(override)
@@ -90,24 +90,17 @@ def select_resources(workbench: Path, configured: Path,
     if reports[0]['path'] == str(configured_dir) and reports[0]['atlas_present']:
         return configured_dir, {'selected_by': 'configured_valid',
                                 'selected': reports[0], 'candidates': reports}
-    good = [r for r in reports if r['atlas_present']]
-    if len(good) == 1:
-        return Path(good[0]['path']), {'selected_by': 'one_known_alternative',
-                                      'selected': good[0], 'candidates': reports}
+
+    known_alternates = [r for r in reports[1:] if r['atlas_present']]
     details = '\n'.join(
         f"  - {r['path']}: {r['status']}" for r in reports)
-    if not good:
-        raise FileNotFoundError(
-            f"Required Taisei atlas {REQUIRED_ATLAS} was not found in any known "
-            f"build resource directory.\n{details}\n"
-            "This is an incomplete/misdirected game resource build, not a model failure. "
-            "Locate a matching compiled resource root or rebuild this game's "
-            "resource targets, then pass --resources PATH. Do not copy random "
-            "assets from another Taisei release.")
-    raise ValueError(
-        f"Several resource roots contain {REQUIRED_ATLAS}; refusing to guess which "
-        "matches the executable. Use --resources PATH:\n" +
-        '\n'.join('  - '+r['path'] for r in good))
+    message = (
+        f"Configured resource root lacks {REQUIRED_ATLAS}: {configured_dir}. "
+        "Known alternatives are diagnostic only; choose a matching compiled root "
+        "explicitly with --resources PATH.\nKnown candidate directories:\n" + details)
+    if known_alternates:
+        raise ValueError(message)
+    raise FileNotFoundError(message)
 
 
 def main(argv=None) -> int:

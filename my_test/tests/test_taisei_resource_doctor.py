@@ -61,19 +61,29 @@ class ResourceDoctorTests(unittest.TestCase):
         self.assertEqual(root, self.default.resolve())
         self.assertEqual(info['selected_by'], 'configured_valid')
 
-    def test_unique_known_alternate_autoselected(self):
+    def test_unique_known_alternate_requires_explicit_override(self):
         self.default.mkdir(parents=True)
         self.set_asset(self.other)
-        root, info = select_resources(self.root,self.default)
-        self.assertEqual(root, self.other.resolve())
-        self.assertEqual(info['selected_by'], 'one_known_alternative')
-
-    def test_ambiguous_alternates_are_blocked(self):
-        self.default.mkdir(parents=True)
-        self.set_asset(self.other)
-        self.set_asset(self.root/'resources')
-        with self.assertRaisesRegex(ValueError,'Several resource roots'):
+        with self.assertRaisesRegex(ValueError,'--resources') as error:
             select_resources(self.root,self.default)
+        self.assertIn(str(self.other.resolve()),str(error.exception))
+        self.assertIn(str(self.default.resolve()),str(error.exception))
+        root, info=select_resources(self.root,self.default,self.other)
+        self.assertEqual(root,self.other.resolve())
+        self.assertEqual(info['selected_by'],'explicit_override')
+
+    def test_multiple_known_alternates_require_explicit_override(self):
+        self.default.mkdir(parents=True)
+        self.set_asset(self.other)
+        third=self.root/'resources'
+        self.set_asset(third)
+        with self.assertRaisesRegex(ValueError,'--resources') as error:
+            select_resources(self.root,self.default)
+        self.assertIn(str(self.other.resolve()),str(error.exception))
+        self.assertIn(str(third.resolve()),str(error.exception))
+        root, info=select_resources(self.root,self.default,third)
+        self.assertEqual(root,third.resolve())
+        self.assertEqual(info['selected_by'],'explicit_override')
 
     def test_no_atlas_gives_diagnostic(self):
         with self.assertRaisesRegex(FileNotFoundError,'portraits.tsatlas.zst'):

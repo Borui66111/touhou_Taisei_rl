@@ -2,7 +2,7 @@
 
 ## Live demo from a trusted skill-policy `.pt` (w2ctrl)
 
-**Single-control design:** There is only **one** supported rendered RL policy runtime: `rl_skill_v2` with `TSKILL2`, 546 input features, 18 movement actions + 3 skill actions, and `taisei_skill_mask_v2_respawn`. The 528-feature historical E4 model is **adapted to this format** without altering its trained movement behavior; it always selects skill `None`. New models trained with `scripts/train_torch_ppo.py` now use the full 546-feature skill-v2 design by default. See [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md).
+**Single-control design:** `scripts/w2ctrl.py` is the only public live-control command. It validates/exports canonical `TSKILL2` for the existing `rl_skill_v2` runtime. Native 546-feature skill-v2 checkpoints export directly. Legacy adaptation is limited to the exact feature-proven `survival_first` source SHA and its matching sibling manifest; historical E4 is blocked until feature-order provenance and observation parity are proven. `scripts/train_torch_ppo.py` is a separate model-training tool, not a live controller. See [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md).
 
 Update your existing **Windows workbench** checkout first. The prebuilt `rl_skill_v2/src/taisei.exe`, Meson environment and game resources must already exist locally; `git pull` does **not** download or rebuild them.
 
@@ -25,11 +25,12 @@ py -3.9 .\scripts\w2ctrl.py prepare "C:\path\to\new-experiment.pt" .\results\new
 py -3.9 -m unittest discover -s .\tests -p test_w2ctrl.py -v
 ```
 
-This invokes the branch's canonical `export_live_skill_ppo_v2.py`, validates both movement and skill heads, exports a SHA-bound `TSKILL2` binary under `results/w2ctrl/`, launches the existing Windows Taisei executable, and audits the fresh game log. **Enter a stage via the game menu**. A game log establishes controller acceptance only; it does not establish a playable replay, visual inspection, or improved gameplay competence. Results and audit files are kept under `results/w2ctrl/` by default. The workflow does not compile or install the game.
+W2CTRL internally uses the canonical TSKILL2 exporter, validates both movement and skill heads, exports a SHA-bound binary under `results/w2ctrl/`, launches the existing Windows Taisei executable, and audits the fresh game log. **Enter a stage via the game menu**. A game log establishes controller acceptance only; it does not establish a playable replay, visual inspection, or improved gameplay competence. Results and audit files are kept under `results/w2ctrl/` by default. The workflow does not compile or install the game.
 
-**Compatibility gate:** Native 546-input/18+3 skill-v2 checkpoints export directly. Historical **528-input E4 movement-only `.pt`** checkpoints are accepted only through a verified 528→546 zero-padding adapter that fixes Bomb/Special to `None`, with source and derived checkpoint hashes recorded. The game always loads `TSKILL2`: there is **no second live controller**. Unsupported architectures or mask versions fail closed. The original E4 checkpoint is unchanged. For optional provenance, use `--expected-sha256 EXPECTED_DIGEST`. Never load an untrusted `.pt` (PyTorch serialization can execute code).
+**Compatibility gate:** Native 546-input/18+3 skill-v2 checkpoints export directly. The only legacy source allowed for live adaptation is `survival_first_seed48020.pt` with SHA-256 `5526812cb58988849165389db9eec50add78d0dfc41840f5eba1ecc491b93b8` and a sibling `survival_first_seed48020_manifest.json` matching both that checkpoint digest and code SHA `07ad672a595093107277b2e1fa398e65c36b6b64`. Its 528-feature prefix is followed by 18 timing+skill features; adaptation preserves movement and fixes skills to `None`. E4 SHA-256 `06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc` is refused for live W2CTRL use until feature-order provenance and observation parity are proven. The game always loads `TSKILL2`; unsupported architectures or mask versions fail closed. Never load an untrusted `.pt` (PyTorch serialization can execute code).
 
 See [W2CTRL.md](W2CTRL.md) for export and live-log audit, [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md) for the single controller contract, and [RESOURCE_RECOVERY.md](RESOURCE_RECOVERY.md) for missing renderer atlas diagnostics.
+
 
 **Replay integrity (observed failure on 2026-10-28):** Do not treat a `Saving ...tsr` log line or a distinct replay filename as proof of recorded gameplay. Two separately named files from local runs were **identical 44-byte TSR headers with empty compressed metadata and events**. `w2ctrl.py` now checks any saved replay attached to its fresh launcher manifest independently of the policy-loaded/decision log. If replay integrity fails, the CLI returns a nonzero status even when logged movement control was attributed. Test any exported file explicitly:
 
@@ -39,17 +40,25 @@ py -3.9 .\scripts\w2ctrl.py replay-check 'C:\path\to\recording.tsr'
 
 `invalid_empty_metadata_and_events` is a **recording failure**, not proof of bad gameplay. Save `%APPDATA%\taisei\log.txt` and the `taisei-live-ppo-*.json` manifest under `%LOCALAPPDATA%\hermes\cache\scratch` for debugging; preserve real MP4/PNG footage as a separate observable gameplay source. **User-observed E1 issue:** dodging and item collection are weak. Source inspection shows native item positions exist in the environment but are omitted from the 546-feature model vector, with no explicit item-pickup reward; see the research-branch failure diagnosis. A future item-aware experiment must version its feature semantics and update native/rendered encoders together while retaining the one `TSKILL2` live controller. Do **not** silently reinterpret existing E1 weights.
 
-**Your two local checkpoint paths — same command, same renderer:**
+**Your local checkpoints — use the same W2CTRL command and renderer:**
 
 ```powershell
-# E1 skill-aware checkpoint (direct TSKILL2 export)
-py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e1_challenger_seed48020.pt' --renderer gl33
+# E1 skill-aware checkpoint
+py -3.9 scripts/w2ctrl.py demo res/ckpt/Taisei_E4_2026-10-28/models/e1_challenger_seed48020.pt --renderer gl33
 
-# E4 historical movement-only checkpoint (adapted to skill-v2; skills disabled)
-py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e4_weighted_bc_seed48030.pt' --renderer gl33
+# Feature-proven survival_first legacy checkpoint; requires its matching sibling manifest
+py -3.9 scripts/w2ctrl.py demo res/Taisei_RL_Checkpoints_Local_Demo_2026-10-25/survival_first_seed48020.pt --renderer gl33
 ```
 
-**If Taisei reports `Required atlas portraits could not be loaded`:** the error is a game **resource initialization failure**, not a model architecture failure. The launcher now checks the atlas before starting. Run `py -3.9 .\scripts\taisei_resource_doctor.py` to locate a valid compiled resource root; if necessary, supply `--resources 'C:\actual\matching\game\resources'` (replace with a verified real path). If none contains the atlas, rebuild/regenerate matching game assets first. The separate `vswhere.exe` warning did not cause the observed fatal atlas error. Do not copy assets from an unrelated game revision.
+The E4 checkpoint is blocked for live use until its feature-order provenance and observation parity are proven.
+
+**If Taisei reports `Required atlas portraits could not be loaded`:** this is a game resource initialization failure, not a model architecture failure. W2CTRL checks the atlas before starting. If the configured resource root is missing the atlas, choose and verify a compiled root for the same game build, then pass it explicitly:
+
+```powershell
+py -3.9 scripts/w2ctrl.py demo res/ckpt/Taisei_E4_2026-10-28/models/e1_challenger_seed48020.pt --resources C:/actual/matching/game/resources --renderer gl33
+```
+
+Do not copy assets from an unrelated game revision. The separate `vswhere.exe` warning did not cause the observed fatal atlas error.
 
 ### Replay serializer diagnostics (2026-10-29)
 
@@ -80,23 +89,17 @@ Human/manual testing with `wb3`:
 ./.venv-winbuild/Scripts/meson.exe devenv -C ./wb3 ./wb3/src/taisei.exe --renderer gl33
 ```
 
-Skill-v2 PPO control with `rl_skill_v2`:
+W2CTRL is the only public live-control entrypoint. From the local `my_test` workbench, pass a compatible checkpoint to `w2ctrl.py demo`; it validates the canonical policy, then invokes the existing `rl_skill_v2` launcher internally.
 
 ```powershell
-.\.venv-winbuild\Scripts\python.exe .\scripts\run_live_ppo_windows.py --renderer gl33 --rl-policy .\results\ppo_skill_survival1_maskv2_200k_seed48000_20261023_live.bin
+py -3.9 scripts/w2ctrl.py demo res/ckpt/Taisei_E4_2026-10-28/models/e1_challenger_seed48020.pt --renderer gl33
 ```
 
-**Policy selection:** `--rl-policy` is required and replaceable with another valid canonical `TSKILL2` mask-v2 export path. The legacy `results/ppo_live_export.bin` is a 528-input, 18-movement policy and is incompatible with this runtime.
+**Policy selection:** W2CTRL accepts canonical 546-input, 18-movement + 3-skill `TSKILL2` mask-v2 models. The historical `results/ppo_live_export.bin` is a 528-input `TPPOv1` policy and is incompatible.
 
-**Verification:** the local GL33 log confirms checkpoint SHA `540ef892f52e8edd15a131e3c0f540e02db9f45a495cffa0aa9099b187068d21` and 5,461 in-game `RL decision` entries across 8 run records. Four decisions selected skills (3 Bomb, 1 Special), all accepted. This verifies policy loading and rendered control, not performance: the candidate recorded 0 wins in 16 development seeds and is not promoted. The local resource bundle still logs missing sound and postprocessing files; they did not prevent gameplay. The earlier direct `meson.exe` launcher exited silently, so this helper uses Meson's Python entry point and current runtime paths. These Windows builds remain local experiments, not upstream Windows headless support.
+**Verification:** the local GL33 log confirms checkpoint SHA `540ef892f52e8edd15a131e3c0f540e02db9f45a495cffa0aa9099b187068d21` and 5,461 in-game `RL decision` entries across 8 run records. Four decisions selected skills (3 Bomb, 1 Special), all accepted. This verifies policy loading and rendered control, not performance: the candidate recorded 0 wins in 16 development seeds and is not promoted. The local resource bundle still logs missing sound and postprocessing files; they did not prevent gameplay. W2CTRL uses the existing runtime paths internally. These Windows builds remain local experiments, not upstream Windows headless support.
 
-**Convert and run the local challenger checkpoint (this workbench only):** Run this from the local `my_test` directory in Windows Command Prompt. It exports the skill-aware `.pt` checkpoint to a canonical v2 `TSKILL2` policy, then starts the existing GL33 demo. These checkpoint/build files are local-only and are absent from a fresh clone.
-
-```cmd
-py -3.9 .\scripts\export_live_skill_ppo_v2.py .\res\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\challenger_seed48020.pt .\res\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\challenger_seed48020_live_v2.bin && .\.venv-winbuild\Scripts\python.exe .\scripts\run_live_ppo_windows.py --renderer gl33 --rl-policy .\res\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\challenger_seed48020_live_v2.bin
-```
-
-The converter needs Python 3.9 with NumPy and PyTorch; `py -3.9` is the verified local interpreter. It replaces only the derived `.bin` export and leaves the source checkpoint unchanged. This 20,000-step Easy Stage 1 candidate is experimental and had 0/16 clears; this is not evidence of competent dodging or improved performance.
+**Local checkpoint note:** use only the single `w2ctrl.py demo` entrypoint for a compatible checkpoint. This 20,000-step Easy Stage 1 candidate is experimental and had 0/16 clears; that is not evidence of competent dodging or improved performance. `train_torch_ppo.py` is a separate model-training tool, not a live-control command.
 
 ## 1. Install WSL2 Ubuntu (optional)
 

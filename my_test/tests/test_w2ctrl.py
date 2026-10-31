@@ -74,7 +74,7 @@ class PortableTests(unittest.TestCase):
         import torch
         with tempfile.TemporaryDirectory() as tmp:
             cp=Path(tmp)/'legacy.pt'; torch.save({'policy_type':'legacy','input_dim':528,'actions':18,'width':128},cp)
-            with self.assertRaisesRegex(ValueError,'legacy checkpoint missing'):
+            with self.assertRaisesRegex(ValueError,'unverified legacy source SHA-256'):
                 w.prepare(cp,Path(tmp)/'bad.bin')
 
     def test_duplicate_protection_and_idempotence(self):
@@ -292,6 +292,55 @@ class PortableTests(unittest.TestCase):
             self.assertTrue(result['metadata_empty_frame_prefix'])
             self.assertTrue(result['events_empty_frame_prefix'])
             self.assertFalse(result['playable_verified'])
+
+    def test_replay_inspection_streams_and_preserves_fixture_statuses(self):
+        from inspect_rendered_tsr import inspect
+        empty = bytes.fromhex('686f6e6fe29da4756d690e8001050000002200000028b52ffd20000100000000000028b52ffd200001000069')
+        valid = (b'hono\xe2\x9d\xa4umi' + struct.pack('<H', 0x800e) +
+                 bytes([1, 2, 3, 4, 5]) + struct.pack('<I', 22) + b'\x01\x02')
+        with tempfile.TemporaryDirectory() as temp:
+            empty_path = Path(temp) / 'empty.tsr'
+            valid_path = Path(temp) / 'valid.tsr'
+            empty_path.write_bytes(empty)
+            valid_path.write_bytes(valid)
+            with mock.patch.object(Path, 'read_bytes', side_effect=AssertionError('unbounded read')):
+                empty_result = inspect(empty_path)
+                valid_result = inspect(valid_path)
+        self.assertEqual(empty_result['status'], 'invalid_empty_metadata_and_events')
+        self.assertEqual(valid_result['status'], 'header_plausible_full_decode_required')
+        self.assertEqual(empty_result['sha256'], hashlib.sha256(empty).hexdigest())
+        self.assertEqual(valid_result['sha256'], hashlib.sha256(valid).hexdigest())
+
+    def test_replay_size_change_during_inspection_rejected(self):
+        import inspect_rendered_tsr
+        valid = (b'hono\xe2\x9d\xa4umi' + struct.pack('<H', 0x800e) +
+                 bytes([1, 2, 3, 4, 5]) + struct.pack('<I', 22) + b'\x01\x02')
+        with tempfile.TemporaryDirectory() as temp:
+            replay = Path(temp) / 'changing.tsr'
+            replay.write_bytes(valid)
+
+            class GrowingPath:
+                def __init__(self, path):
+                    self.path = Path(path)
+                    self.stat_calls = 0
+
+                def __str__(self):
+                    return str(self.path)
+
+                def is_file(self):
+                    return self.path.is_file()
+
+                def stat(self):
+                    self.stat_calls += 1
+                    size = self.path.stat().st_size + (self.stat_calls > 1)
+                    return mock.Mock(st_size=size)
+
+                def open(self, mode):
+                    return self.path.open(mode)
+
+            with mock.patch.object(inspect_rendered_tsr, 'Path', GrowingPath):
+                result = inspect_rendered_tsr.inspect(replay)
+        self.assertEqual(result['status'], 'file_changed_during_inspection')
 
     def test_live_manifest_marks_header_only_replay_failed(self):
         from inspect_rendered_tsr import inspect

@@ -23,6 +23,9 @@ import uuid
 HERE = Path(__file__).resolve().parent
 MAGIC = b"TSKILL2\0"
 MASK_VERSION = "taisei_skill_mask_v2_respawn"
+APPROVED_LEGACY_SHA256 = "5526812cb58988849165389db39eec50add78d0dfc41840f5eba1ecc491b93b8"
+APPROVED_LEGACY_CODE_SHA = "07ad672a595093107277b2e1fa398e65c36b6b64"
+BLOCKED_E4_SHA256 = "06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc"
 SHAPES = ((128, 546), (128,), (128, 128), (128,), (18, 128), (18,), (3, 128), (3,))
 TENSOR_NAMES = ("base.0.weight", "base.0.bias", "base.2.weight", "base.2.bias",
                 "actor.weight", "actor.bias", "skill_actor.weight", "skill_actor.bias")
@@ -142,6 +145,39 @@ def verify_forward_logits(checkpoint: Path, policy: Path, *, trials: int = 16) -
             "numerical_parity":"pytorch_vs_numpy_verified", "c_loader_parity":"not_tested"}
 
 
+def _approved_legacy_provenance(checkpoint: Path, source_sha: str) -> dict:
+    if source_sha == BLOCKED_E4_SHA256:
+        raise ValueError(
+            "unverified legacy source: E4 is blocked for live use until feature-order "
+            "provenance and observation parity are proven")
+    if source_sha != APPROVED_LEGACY_SHA256:
+        raise ValueError(f"unverified legacy source SHA-256: {source_sha}")
+
+    manifest_path = checkpoint.with_name("survival_first_seed48020_manifest.json")
+    if not manifest_path.is_file():
+        raise ValueError(f"unverified legacy source: required sibling manifest missing: {manifest_path}")
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(f"unverified legacy source: invalid sibling manifest: {manifest_path}") from exc
+    if not isinstance(manifest, dict) or manifest.get("checkpoint_sha256") != source_sha:
+        raise ValueError("unverified legacy source: manifest checkpoint_sha256 mismatch")
+    if manifest.get("code_sha") != APPROVED_LEGACY_CODE_SHA:
+        raise ValueError("unverified legacy source: manifest code_sha mismatch")
+    return {
+        "checkpoint_sha256": source_sha,
+        "manifest_path": str(manifest_path),
+        "code_sha": APPROVED_LEGACY_CODE_SHA,
+        "feature_contract": {
+            "legacy_prefix_features": 528,
+            "canonical_input_features": 546,
+            "appended_timing_and_skill_features": 18,
+            "feature_order": "features() defines the 528-feature prefix; skill_features() appends timing+skill features",
+            "evidence": "native_rl/torch_ppo.py:61-71",
+        },
+    }
+
+
 def prepare(checkpoint: Path, output: Path, expected_sha: str | None = None) -> dict:
     checkpoint, output = Path(checkpoint).resolve(), Path(output).resolve()
     check_hash = sha256_file(checkpoint)
@@ -154,19 +190,28 @@ def prepare(checkpoint: Path, output: Path, expected_sha: str | None = None) -> 
     import torch
     obj = torch.load(checkpoint, map_location="cpu", weights_only=False)
     source_policy_type = obj.get("policy_type") if isinstance(obj, dict) else None
+    if check_hash == BLOCKED_E4_SHA256:
+        raise ValueError(
+            "unverified legacy source: E4 is blocked for live use until feature-order "
+            "provenance and observation parity are proven")
+    approved_provenance = None
+    if source_policy_type == "legacy":
+        approved_provenance = _approved_legacy_provenance(checkpoint, check_hash)
+    elif source_policy_type != "skill":
+        raise ValueError(f"unsupported source policy_type={source_policy_type!r}; expected skill or verified legacy")
+
     output.parent.mkdir(parents=True, exist_ok=True)
     export_checkpoint = checkpoint
     adaptation = None
     if source_policy_type == "legacy":
-        # One runtime only: wrap 528 movement features into the 546-input
-        # skill-v2 ABI, keeping the legacy movement logits and disabling skills.
+        # The one allowlisted legacy model maps its 528-feature prefix into the
+        # 546-input skill-v2 ABI; its source manifest proves feature ordering.
         from legacy_to_skillv2 import adapt
         adapted_path = output.parent / "adapted_checkpoints" / (
             f"{checkpoint.stem}_{check_hash[:12]}_skillv2.pt")
         adaptation = adapt(checkpoint, adapted_path)
+        adaptation["approved_source_provenance"] = approved_provenance
         export_checkpoint = adapted_path
-    elif source_policy_type != "skill":
-        raise ValueError(f"unsupported source policy_type={source_policy_type!r}; expected skill or exact legacy")
     tmp = output.with_name(f".{output.name}.{uuid.uuid4().hex}.tmp")
     try:
         export(export_checkpoint, tmp)
@@ -470,7 +515,7 @@ def demo(checkpoint: Path, *, policy: Path | None = None, renderer: str = "gl33"
 def main(argv=None) -> int:
     p=argparse.ArgumentParser(description=__doc__)
     sub=p.add_subparsers(dest="command",required=True)
-    exp=sub.add_parser("prepare",help="export one TSKILL2 from verified 546-skill or 528-legacy PT")
+    exp=sub.add_parser("prepare",help="export TSKILL2 from a skill checkpoint or the manifest-verified survival_first legacy source")
     exp.add_argument("checkpoint",type=Path);exp.add_argument("output",type=Path)
     exp.add_argument("--expected-sha256")
     inspect=sub.add_parser("inspect",help="validate canonical TSKILL2 binary metadata")
@@ -483,7 +528,7 @@ def main(argv=None) -> int:
     launch.add_argument("policy",type=Path);launch.add_argument("--renderer",default="gl33")
     launch.add_argument("--report",type=Path)
     launch.add_argument("--resources",type=Path,help="explicit compiled Taisei resource root")
-    single=sub.add_parser("demo",help="ONE COMMAND: convert trusted skill PT and launch/audit Windows Taisei")
+    single=sub.add_parser("demo",help="ONE COMMAND: convert an accepted checkpoint and launch/audit Windows Taisei")
     single.add_argument("checkpoint",type=Path)
     single.add_argument("--policy",type=Path,help="optional target TSKILL2 path (default: content-addressed results/w2ctrl)")
     single.add_argument("--expected-sha256",help="optional trusted checkpoint digest")

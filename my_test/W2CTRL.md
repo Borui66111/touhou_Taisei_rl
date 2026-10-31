@@ -1,8 +1,8 @@
 # W2CTRL — verified skill-policy export and guarded Windows live control
 
-**Integration:** This copy lives on `feat/native-rl-workbench`, explicitly requested for the existing local Windows workbench. It reuses the existing branch’s exact `TSKILL2` exporter and launcher; main-branch source was compared at `fd0376f6ca2e63071bb1d0ef07780f349b670614` (2026-10-28). No new branch or renderer build is created.
+**Integration:** This copy lives on `feat/native-rl-workbench`, explicitly requested for the existing local Windows workbench. The public entrypoint is only `w2ctrl.py`; it internally reuses the existing `TSKILL2` exporter and Windows launcher. No second runtime or toy engine is introduced.
 
-The actual `main` branch includes `my_test/scripts/export_live_skill_ppo_v2.py` (Git blob `c54158611b5e0a145620733fc24e99612b3e5329`) and `my_test/scripts/run_live_ppo_windows.py` (Git blob `9280be78511a389e407c71684ce34efce63193a0`). These supersede the earlier assumption that the `TSKILL2` binary schema was unknown. W2CTRL **uses the same exporter and launcher**, not a guessed format or toy engine.
+The W2CTRL workflow internally uses the branch’s canonical exporter and launcher. This preserves the actual `TSKILL2` schema and rendered game runtime without a guessed format or toy engine.
 
 ## Verified contract
 
@@ -15,7 +15,7 @@ The actual `main` branch includes `my_test/scripts/export_live_skill_ppo_v2.py` 
 | Exported challenger | `e1_challenger_seed48020_TSKILL2.bin`, **357,347 bytes**, SHA-256 `63e1acc2b27aa74bb766f079061b2f1b3e0e13097a4f885fcfc8396c14c53423` |
 | Exported E1 control | `e1_control_seed48020_TSKILL2.bin`, SHA-256 `c7cc6d0e9238960f0a32a4a7ee190a117713d056918bdf484abc080e781100a2` |
 | Numerical validation | 16 observation vectors per model, BOTH logits heads, argmax parity, max absolute difference under `5e-7`; **not C native loader parity** |
-| Existing E4 model | 528-input legacy `.pt` is **adapted** to the same `TSKILL2` 546-input runtime; 528-prefix movement logits preserved; Bomb/Special always `None` |
+| Legacy compatibility | Only the allowlisted `survival_first` SHA plus matching sibling manifest may be adapted; historical E4 is blocked for live use pending feature-order provenance and observation parity |
 
 ## How to run on your Windows Taisei workbench
 
@@ -29,40 +29,36 @@ After updating the existing `feat/native-rl-workbench` checkout, the scripts are
 py -3.9 .\scripts\w2ctrl.py demo "C:\path\to\new_experiment.pt" --renderer gl33
 ```
 
-This automatically verifies and exports the checkpoint into a digest-versioned `results/w2ctrl/` binary, launches the *existing* `rl_skill_v2` game, and writes a new audit JSON. Enter a game stage in the real game's menu. The exporter supports only **546-input, 18 movement + 3 skill actions, mask-v2** models, so other architectures are deliberately rejected. It does not install or compile Taisei.
+This automatically verifies and exports the checkpoint into a digest-versioned `results/w2ctrl/` binary, launches the *existing* `rl_skill_v2` game, and writes a new audit JSON. Enter a game stage in the real game’s menu. W2CTRL accepts only **546-input, 18 movement + 3 skill actions, mask-v2** native checkpoints, plus the specifically allowlisted manifest-verified legacy source described below. It does not install or compile Taisei.
 
 ```powershell
-# From the repository's my_test directory. Use the Python installation with torch + numpy.
-py -3.9 -m pip install torch numpy
+# From my_test: use W2CTRL for every public live-control operation
+py -3.9 scripts/w2ctrl.py demo models/e1_challenger_seed48020.pt --renderer gl33
 
-# Verify model SHA, export with the actual main exporter, and check both heads.
-py -3.9 .\scripts\w2ctrl.py prepare ".\models\e1_challenger_seed48020.pt" ".\results\e1_challenger_seed48020_TSKILL2.bin" --expected-sha256 be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478
+# Optional conversion/validation only; no game launch
+py -3.9 scripts/w2ctrl.py prepare models/e1_challenger_seed48020.pt results/e1_TSKILL2.bin --expected-sha256 be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478
 
-# Optional dry-run of the existing main-branch game launcher: does NOT play the game.
-py -3.9 .\scripts\run_live_ppo_windows.py --renderer gl33 --rl-policy ".\results\e1_challenger_seed48020_TSKILL2.bin" --dry-run
-
-# ACTUAL rendered game launch + independent fresh-log attribution check:
-py -3.9 .\scripts\w2ctrl.py run ".\results\e1_challenger_seed48020_TSKILL2.bin" --renderer gl33
-
-# Or use a single PowerShell helper (export only unless -Launch is specified):
-.\scripts\RUN_W2CTRL_WINDOWS.ps1 -Checkpoint ".\models\e1_challenger_seed48020.pt" -Launch
+# Launch and audit a previously prepared canonical policy through W2CTRL
+py -3.9 scripts/w2ctrl.py run results/e1_TSKILL2.bin --renderer gl33
 ```
 
 The launcher opens the real game; **enter a stage through the menu**. `w2ctrl.py run` reads only the new manifest created by the real Windows launcher. It distinguishes *policy loaded and made decisions* from *process exit 0*. If logs rotate, no fresh decisions are attributed, SHA identities differ, or a sealed evaluation seed appears, it reports **not verified**.
 
-### Why a separate W2CTRL verifier?
+## One live controller and manifest-gated legacy adaptation
 
-## One live controller and automatic E4 migration (2026-10-28)
+All rendered-game policies use one ABI: `rl_skill_v2` / `TSKILL2`, 546 floats, 18 movement + 3 skill logits, and mask `taisei_skill_mask_v2_respawn`. Native skill-v2 checkpoints export directly. Live legacy adaptation is restricted to `survival_first_seed48020.pt` with source SHA `5526812cb58988849165389db9eec50add78d0dfc41840f5eba1ecc491b93b8`, plus its sibling `survival_first_seed48020_manifest.json` matching that digest and code SHA `07ad672a595093107277b2e1fa398e65c36b6b64`. Provenance records that `features()` defines the 528-feature prefix and `skill_features()` appends 18 timing+skill features (`native_rl/torch_ppo.py:61-71`). Movement weights are embedded with zero padding and the skill head is fixed to `None`; the original model gains no skill competence.
 
-All rendered-game policies use **exactly one** ABI: `rl_skill_v2` / `TSKILL2`, 546 floats, 18 movement + 3 skill logits and mask `taisei_skill_mask_v2_respawn`. `w2ctrl.py` accepts both genuine 546-feature skill checkpoints and archived E4 528-feature legacy checkpoints through the audited `legacy_to_skillv2.py` adapter. A legacy model becomes a **derived** 546-feature checkpoint with the 18 new input weights zero-padded and the skill-head fixed to select `None`; the original movement network is copied exactly, with 16-vector parity verification. Both source and derived hashes are preserved. It does not acquire skill competence or become a newly trained skill model. New native PPO training through `scripts/train_torch_ppo.py` defaults exclusively to canonical skill-v2; unsupported legacy/v3 training modes are refused. See [LIVE_POLICY_CONTRACT.md](LIVE_POLICY_CONTRACT.md).
+E4 SHA `06c344d1c9415d1277e89c7d7c1a4519f274952f159e1cc5095d7fecf696e6fc` is blocked for live W2CTRL use until feature-order provenance and observation parity are proven. `train_torch_ppo.py` is a separate model-training tool; it is not a live-control entrypoint.
 
 ```powershell
-# Both models run via the same skill-v2 Windows game control; from my_test.
-py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e1_challenger_seed48020.pt' --renderer gl33
-py -3.9 .\scripts\w2ctrl.py demo '.\res\ckpt\Taisei_E4_2026-10-28\models\e4_weighted_bc_seed48030.pt' --renderer gl33
+# Native E1 skill-v2 checkpoint
+py -3.9 scripts/w2ctrl.py demo res/ckpt/Taisei_E4_2026-10-28/models/e1_challenger_seed48020.pt --renderer gl33
+
+# The only legacy checkpoint eligible for manifest-gated adaptation
+py -3.9 scripts/w2ctrl.py demo res/Taisei_RL_Checkpoints_Local_Demo_2026-10-25/survival_first_seed48020.pt --renderer gl33
 ```
 
-**Before launching:** the required atlas `portraits.tsatlas.zst` must exist in a compatible rendered-game resource root. The new resource preflight checks `TAISEI_RES_PATH` candidates and supports `--resources PATH`; see [RESOURCE_RECOVERY.md](RESOURCE_RECOVERY.md). The observed fatal screenshot showed **0 loaded policies and 0 decisions**, a game startup failure, not a checkpoint failure. An unrelated VS environment warning is not sufficient explanation for the atlas fatal error. If the matching atlas is not found, regenerate **same-revision** resources and do not claim the game ran.
+**Before launching:** the required atlas `portraits.tsatlas.zst` must exist in the configured resource root. If it does not, W2CTRL reports known candidates but will not select an alternate automatically. Choose a matching compiled resource root explicitly with `--resources PATH`; see [RESOURCE_RECOVERY.md](RESOURCE_RECOVERY.md). The observed fatal screenshot showed **0 loaded policies and 0 decisions**, a game startup failure, not a checkpoint failure. If no matching atlas is available, regenerate same-revision resources and do not claim the game ran.
 
 The current `main` Windows launcher recognizes a **single** run sequence for its `attribution = matched` status. Its README documents **8** run records and **5,461** decisions in a local session. W2CTRL checks multiple independently ordered `RL run` / `RL decision` / `RL policy outcome` segments with a matching checkpoint SHA and avoids using historic log entries. Its tests use **synthetic log fixtures only** (including out-of-order loads, missing seeds, rejected decisions, and nonmonotonic frames); they do not prove the actual game ran here.
 

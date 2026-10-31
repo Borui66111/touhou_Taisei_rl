@@ -283,6 +283,10 @@ def _build_plan(policy, renderer="gl33", dry_run=False, resources=None):
     policy_path = Path(policy)
     if not policy_path.is_absolute():
         policy_path = ROOT / policy_path
+    # The raw launcher is an internal dependency of W2CTRL, not a validation
+    # bypass. Use its canonical parser before preparing any subprocess plan.
+    from w2ctrl import parse_policy as parse_canonical_policy
+    parse_canonical_policy(policy_path)
     override = None
     if resources is not None:
         override = Path(resources)
