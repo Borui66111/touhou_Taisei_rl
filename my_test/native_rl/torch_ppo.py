@@ -478,7 +478,7 @@ def _nearest_projectile_trace(obs):
 
 def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
              sampled=False, device='cpu', planner=None, trace_callback=None,
-             sampling_seed=None):
+             sampling_seed=None, force_skill_none=False):
     """Evaluate episodes; frames is elapsed, alive_frames counts alive one-frame
     post-action native states (reset excluded). For action strides >1, exact
     intermediate alive frames are unavailable, so alive_frames is None.
@@ -494,6 +494,8 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
         torch.manual_seed(sampling_seed)
     policy_type='legacy' if planner else ('skill' if isinstance(model,SkillActorCritic) else 'legacy')
     feature_fn=skill_features if policy_type=='skill' else features
+    if force_skill_none and policy_type != 'skill':
+        raise ValueError('force_skill_none requires a native SkillActorCritic checkpoint')
     reports=[]
     with TaiseiEnv(cfg) as env:
         for e in range(episodes):
@@ -530,7 +532,9 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                                 skill_max_probability=float(skill_dist.probs.max(dim=1).values.item())
                                 skill_argmax=int(skill_logits.argmax(dim=1).item())
                             move=int(Categorical(logits=logits).sample().item()) if sampled else int(logits.argmax(dim=1).item())
-                            skill=int(Categorical(logits=skill_logits).sample().item()) if sampled else int(skill_logits.argmax(dim=1).item())
+                            skill=(0 if force_skill_none else
+                                   (int(Categorical(logits=skill_logits).sample().item()) if sampled
+                                    else int(skill_logits.argmax(dim=1).item())))
                             action=(move,skill)
                         else:
                             logits,_=out
@@ -551,6 +555,7 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                         'player_x':float(player[0]) if len(player)>0 else None,
                         'player_y':float(player[1]) if len(player)>1 else None,
                         'alive':bool(obs.get('skill_state',[False])[0]),
+                        'invulnerable':bool(player[7]) if len(player)>7 else False,
                         'deaths':int(obs.get('deaths',0)),
                         'projectile_count':int(obs.get('projectile_count',0)),
                         'laser_count':int(obs.get('laser_count',0)),
@@ -569,6 +574,8 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                             'logical_frame':int(info.get('logical_frame_after',obs.get('logical_frame',0))),
                             'alive':bool(info.get('player_alive_after',obs.get('skill_state',[False])[0])),
                             'deaths':int(obs.get('deaths',0)),
+                            'player_x':float(obs.get('player',[None])[0]),
+                            'player_y':float(obs.get('player',[None,None])[1]),
                             'boss_damage':float(info.get('boss_damage',0.0)),
                         },
                     })
@@ -634,5 +641,6 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                         'special_activations':special_activations,
                         'surge_active_frames':surge_active_frames,
                         'reward':round(total_reward,3),'terminated':term,'truncated':trunc,
+                        'movement_only_ablation':bool(force_skill_none),
                         'digest':info['digest']});break
     return reports
