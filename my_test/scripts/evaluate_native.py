@@ -38,9 +38,13 @@ def main(argv=None):
     parser.add_argument('--max-frames', type=int, default=10000)
     parser.add_argument('--model')
     parser.add_argument('--sampled', action='store_true')
+    parser.add_argument('--no-skills', action='store_true',
+                        help='Evaluate SkillActorCritic movement with Bomb/Special forced NONE (defense ablation)')
+    parser.add_argument('--edge-veto', action='store_true',
+                        help='EXPERIMENTAL: veto outward wall movement using risk teacher, only with --no-skills')
     parser.add_argument('--sampling-seed', type=int,
                         help='Seed Torch action sampling for sampled PPO evaluation')
-    parser.add_argument('--policy', choices=['ppo', 'heuristic', 'random'], default='ppo')
+    parser.add_argument('--policy', choices=['ppo', 'heuristic', 'risk_teacher', 'random'], default='ppo')
     parser.add_argument('--episodes', type=int, default=20)
     parser.add_argument('--seed', type=int, default=91000)
     parser.add_argument('--out', default='results/native_evaluation.jsonl')
@@ -48,8 +52,17 @@ def main(argv=None):
     args = parser.parse_args(argv)
     if args.policy == 'ppo' and not args.model:
         parser.error('--model required for PPO')
+    if args.no_skills and args.policy != 'ppo':
+        parser.error('--no-skills requires --policy ppo and an actual skill-v2 checkpoint')
+    if args.edge_veto and not args.no_skills:
+        parser.error('--edge-veto requires --no-skills for controlled defensive ablation')
     if args.sampling_seed is not None and (args.policy != 'ppo' or not args.sampled):
         parser.error('--sampling-seed requires --policy ppo and --sampled')
+    if args.no_skills or args.edge_veto or args.policy == 'risk_teacher':
+        if pathlib.Path(args.out).exists():
+            parser.error(f'Refusing overwrite of defensive experiment output: {args.out}')
+        if args.trace_out and pathlib.Path(args.trace_out).exists():
+            parser.error(f'Refusing overwrite of defensive experiment trace: {args.trace_out}')
 
     cfg = EnvConfig(library_path=args.library, resource_path=args.resource_path,
                     stage_id=args.stage, difficulty=args.difficulty,
@@ -59,6 +72,10 @@ def main(argv=None):
         plan = lambda _: rng.randrange(18)
     elif args.policy == 'heuristic':
         plan = heuristic_action
+    elif args.policy == 'risk_teacher':
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'research' / 'rsi'))
+        from risk_aware_teacher import risk_aware_action
+        plan = risk_aware_action
     else:
         plan = None
 
@@ -77,6 +94,9 @@ def main(argv=None):
             'mean_score': sum(x['score'] for x in rows) / len(rows),
             'mean_point_item_value': sum(x['point_item_value'] for x in rows) / len(rows),
             'mean_bombs_used': sum(x['bombs_used'] for x in rows) / len(rows),
+            'movement_only_ablation':bool(args.no_skills),
+            'experimental_edge_veto':bool(args.edge_veto),
+            'total_edge_veto_corrections':sum(x.get('movement_guard_corrections',0) for x in rows),
             'mean_logical_frame': sum(x['logical_frame'] for x in rows) / len(rows),
         }
         print(json.dumps(summary, indent=2))
@@ -88,6 +108,11 @@ def main(argv=None):
                 report_file.write(json.dumps(row) + '\n')
         summarize(rows)
 
+    defense_kwargs = {'force_skill_none': True} if args.no_skills else {}
+    if args.edge_veto:
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'research' / 'rsi'))
+        from wall_veto import edge_veto
+        defense_kwargs['movement_guard'] = edge_veto
     if args.trace_out:
         with open_trace_file(args.trace_out, args.out) as trace_file:
             def record_trace(row):
@@ -95,11 +120,11 @@ def main(argv=None):
             rows = evaluate(cfg, args.model, episodes=args.episodes, seed=args.seed,
                             sampled=args.sampled, planner=plan,
                             trace_callback=record_trace,
-                            sampling_seed=args.sampling_seed)
+                            sampling_seed=args.sampling_seed, **defense_kwargs)
     else:
         rows = evaluate(cfg, args.model, episodes=args.episodes, seed=args.seed,
                         sampled=args.sampled, planner=plan,
-                        sampling_seed=args.sampling_seed)
+                        sampling_seed=args.sampling_seed, **defense_kwargs)
     write_reports(rows)
 
 
