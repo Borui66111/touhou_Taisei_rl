@@ -58,6 +58,11 @@ def main(argv=None):
         parser.error('--edge-veto requires --no-skills for controlled defensive ablation')
     if args.sampling_seed is not None and (args.policy != 'ppo' or not args.sampled):
         parser.error('--sampling-seed requires --policy ppo and --sampled')
+    if args.no_skills or args.edge_veto or args.policy == 'risk_teacher':
+        if pathlib.Path(args.out).exists():
+            parser.error(f'Refusing overwrite of defensive experiment output: {args.out}')
+        if args.trace_out and pathlib.Path(args.trace_out).exists():
+            parser.error(f'Refusing overwrite of defensive experiment trace: {args.trace_out}')
 
     cfg = EnvConfig(library_path=args.library, resource_path=args.resource_path,
                     stage_id=args.stage, difficulty=args.difficulty,
