@@ -33,6 +33,18 @@ Bullet proximity is different from true collision: current linear closest-approa
 
 These are **source-tested measurement tools**, not claims that E1 learned to avoid bullets. They do not repair the separate empty `.tsr` replay writer.
 
+## Your October 25 local model identity
+
+Your Windows file `my_test\\res\\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\\challenger_seed48020.pt` is the **E1 skill-aware survival-first PPO challenger**, not a new E7 or movement-only E1 checkpoint. Provenance: original [native experiment 40187753883](https://github.com/Borui66111/touhou_Taisei_rl/actions/runs/40187753883), 20,000 training decisions, seed 48020, Stage 1 Easy, evaluation seeds 42110–42125. Expected SHA-256 `be320e7764b236b6d2b8c42eb26524fdd57345fe2182cc916ca53f0cdf8d4478`, full `SkillActorCritic` 546 inputs + 18 movement/3 skill actions, mask v2. Measured 4,477 mean alive frames (control 3,454), 0/16 clears, 3 deaths, 8.9375 Bomb uses per episode. This is evidence of a survival difference **with skills**, not evidence of competent dodging. The no-skill native evaluation below is intended to reveal whether movement itself learned threat avoidance.
+
+Local verification from `my_test`:
+
+```powershell
+(Get-FileHash '.\\res\\Taisei_RL_Checkpoints_Local_Demo_2026-10-25\\challenger_seed48020.pt' -Algorithm SHA256).Hash
+```
+
+Only run the native arms if the file matches that SHA, with a valid exact pinned native library; avoid confusing the original Windows rendered game executable with a native `libtaisei_sim` testing library.
+
 ## Next bounded authentic experiment (three independent native jobs)
 
 Do not execute if the exact pinned Taisei native library/resources and source manifest are unavailable. Run a native provenance gate first; the commands below verify path existence but **do not independently prove the binary was built from the pinned source**. Follow `research/rsi/BRANCH_POLICY.md` and the native source/provenance preflight. Use the **same** authentic Stage 1 Easy task, one-frame actions, 16 fixed DEVELOPMENT seeds `42152..42167` (not the sealed final 43000–43099); use distinct new output filenames. Never overwrite existing JSONL. All native arms must have **zero verified Bomb use** and compatible task/build identity.
@@ -46,7 +58,7 @@ python my_test/scripts/evaluate_native.py \
   --library /exact/pinned/libtaisei_sim.so \
   --resource-path /exact/pinned/resources \
   --stage 1 --difficulty 1 --policy ppo \
-  --model /trusted/verified/e1_challenger_seed48020.pt \
+  --model /trusted/verified/challenger_seed48020.pt \
   --no-skills --seed 42152 --episodes 16 --max-frames 10000 \
   --out /new/results/e1_no_skills_42152_42167.jsonl \
   --trace-out /new/results/e1_no_skills_trace_42152_42167.jsonl
@@ -57,7 +69,7 @@ python my_test/scripts/evaluate_native.py \
   --library /exact/pinned/libtaisei_sim.so \
   --resource-path /exact/pinned/resources \
   --stage 1 --difficulty 1 --policy ppo \
-  --model /trusted/verified/e1_challenger_seed48020.pt \
+  --model /trusted/verified/challenger_seed48020.pt \
   --no-skills --edge-veto --seed 42152 --episodes 16 --max-frames 10000 \
   --out /new/results/e1_wall_veto_42152_42167.jsonl \
   --trace-out /new/results/e1_wall_veto_trace_42152_42167.jsonl
