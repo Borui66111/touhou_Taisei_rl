@@ -476,7 +476,7 @@ def _nearest_projectile_trace(obs):
 
 def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
              sampled=False, device='cpu', planner=None, trace_callback=None,
-             sampling_seed=None):
+             sampling_seed=None, force_skill_none=False, movement_guard=None):
     """Evaluate episodes; frames is elapsed, alive_frames counts alive one-frame
     post-action native states (reset excluded). For action strides >1, exact
     intermediate alive frames are unavailable, so alive_frames is None.
@@ -492,6 +492,10 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
         torch.manual_seed(sampling_seed)
     policy_type='legacy' if planner else ('skill' if isinstance(model,SkillActorCritic) else 'legacy')
     feature_fn=skill_features if policy_type=='skill' else features
+    if force_skill_none and policy_type != 'skill':
+        raise ValueError('force_skill_none requires a native SkillActorCritic checkpoint')
+    if movement_guard is not None and (not force_skill_none or not callable(movement_guard)):
+        raise ValueError('experimental movement_guard requires a callable and force_skill_none=True')
     reports=[]
     with TaiseiEnv(cfg) as env:
         for e in range(episodes):
@@ -502,6 +506,7 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
             special_attempts=0;special_activations=0
             surge_active_frames=0 if cfg.frames_per_action == 1 else None
             action_index=0
+            movement_guard_corrections=0
             while True:
                 x=feature_fn(obs)
                 move_entropy=move_max_probability=move_argmax=None
@@ -528,7 +533,9 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                                 skill_max_probability=float(skill_dist.probs.max(dim=1).values.item())
                                 skill_argmax=int(skill_logits.argmax(dim=1).item())
                             move=int(Categorical(logits=logits).sample().item()) if sampled else int(logits.argmax(dim=1).item())
-                            skill=int(Categorical(logits=skill_logits).sample().item()) if sampled else int(skill_logits.argmax(dim=1).item())
+                            skill=(0 if force_skill_none else
+                                   (int(Categorical(logits=skill_logits).sample().item()) if sampled
+                                    else int(skill_logits.argmax(dim=1).item())))
                             action=(move,skill)
                         else:
                             logits,_=out
@@ -538,6 +545,15 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                                 move_max_probability=float(move_dist.probs.max(dim=1).values.item())
                                 move_argmax=int(logits.argmax(dim=1).item())
                             action=int(Categorical(logits=logits).sample().item()) if sampled else int(logits.argmax(dim=1).item())
+                pre_guard_movement=int(action[0] if isinstance(action,(tuple,list)) else action)
+                veto_applied=False
+                if movement_guard is not None:
+                    guarded_move=movement_guard(obs,pre_guard_movement)
+                    if isinstance(guarded_move,bool) or not isinstance(guarded_move,int) or not 0 <= guarded_move < 18:
+                        raise ValueError('Movement guard must return int action 0..17')
+                    veto_applied=(guarded_move!=pre_guard_movement)
+                    movement_guard_corrections+=int(veto_applied)
+                    action=(guarded_move,0)
                 pre_state=None
                 if trace_callback is not None:
                     player=obs.get('player', [])
@@ -549,6 +565,7 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                         'player_x':float(player[0]) if len(player)>0 else None,
                         'player_y':float(player[1]) if len(player)>1 else None,
                         'alive':bool(obs.get('skill_state',[False])[0]),
+                        'invulnerable':bool(player[7]) if len(player)>7 else False,
                         'deaths':int(obs.get('deaths',0)),
                         'projectile_count':int(obs.get('projectile_count',0)),
                         'laser_count':int(obs.get('laser_count',0)),
@@ -559,6 +576,7 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                     trace_callback({
                         'seed':seed+e,'episode_index':e,'action_index':action_index,
                         'pre':pre_state,'movement_action':move_action,'skill_action':skill_action,
+                        'movement_before_guard':pre_guard_movement,'movement_guard_applied':veto_applied,
                         'movement_argmax':move_argmax,'movement_entropy':move_entropy,
                         'movement_max_probability':move_max_probability,
                         'skill_argmax':skill_argmax,'skill_entropy':skill_entropy,
@@ -567,6 +585,8 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                             'logical_frame':int(info.get('logical_frame_after',obs.get('logical_frame',0))),
                             'alive':bool(info.get('player_alive_after',obs.get('skill_state',[False])[0])),
                             'deaths':int(obs.get('deaths',0)),
+                            'player_x':float(obs.get('player',[None])[0]),
+                            'player_y':float(obs.get('player',[None,None])[1]),
                             'boss_damage':float(info.get('boss_damage',0.0)),
                         },
                     })
@@ -632,5 +652,8 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                         'special_activations':special_activations,
                         'surge_active_frames':surge_active_frames,
                         'reward':round(total_reward,3),'terminated':term,'truncated':trunc,
+                        'movement_only_ablation':bool(force_skill_none),
+                        'movement_guard_enabled':movement_guard is not None,
+                        'movement_guard_corrections':movement_guard_corrections,
                         'digest':info['digest']});break
     return reports
