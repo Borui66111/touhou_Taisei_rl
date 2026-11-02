@@ -42,7 +42,7 @@ def main(argv=None):
                         help='Evaluate SkillActorCritic movement with Bomb/Special forced NONE (defense ablation)')
     parser.add_argument('--sampling-seed', type=int,
                         help='Seed Torch action sampling for sampled PPO evaluation')
-    parser.add_argument('--policy', choices=['ppo', 'heuristic', 'random'], default='ppo')
+    parser.add_argument('--policy', choices=['ppo', 'heuristic', 'risk_teacher', 'random'], default='ppo')
     parser.add_argument('--episodes', type=int, default=20)
     parser.add_argument('--seed', type=int, default=91000)
     parser.add_argument('--out', default='results/native_evaluation.jsonl')
@@ -63,6 +63,10 @@ def main(argv=None):
         plan = lambda _: rng.randrange(18)
     elif args.policy == 'heuristic':
         plan = heuristic_action
+    elif args.policy == 'risk_teacher':
+        sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / 'research' / 'rsi'))
+        from risk_aware_teacher import risk_aware_action
+        plan = risk_aware_action
     else:
         plan = None
 
