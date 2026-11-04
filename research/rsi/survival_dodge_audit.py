@@ -97,8 +97,12 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
     counts = dict(total_steps=0, eligible_vulnerable_steps=0, boundary_steps=0,
                   outward_command_steps=0, outward_command_under_threat_steps=0,
                   linear_threat_steps=0, pinned_commands=0,
-                  death_increments=0, skill_requested=0)
+                  death_increments=0, skill_requested=0,
+                  pre_vulnerable_decisions=0, pre_vulnerable_death_transitions=0,
+                  pre_vulnerable_projectile_proxy_steps=0,
+                  pre_vulnerable_projectile_proxy_death_transitions=0)
     per_seed = {}
+    first_vulnerable_death_by_seed = {}
     distinct_actions = set()
     max_same_action = 0
     same_action = 0
@@ -129,7 +133,19 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
         distinct_actions.add(action)
         counts['total_steps'] += 1
         pre, post = row['pre'], row['post']
-        counts['death_increments'] += post['deaths'] - pre['deaths']
+        death_increment = post['deaths'] - pre['deaths']
+        counts['death_increments'] += death_increment
+        # Attribute fatal actions using the PRE-action vulnerable state. Conditioning
+        # on post.alive/deaths here would silently discard the fatal decision.
+        pre_vulnerable = pre['alive'] and not pre.get('invulnerable', False)
+        if pre_vulnerable:
+            counts['pre_vulnerable_decisions'] += 1
+            danger_at_decision = _threat_proxy(pre)  # bullet proxy, NOT laser geometry
+            counts['pre_vulnerable_projectile_proxy_steps'] += int(danger_at_decision)
+            if death_increment:
+                counts['pre_vulnerable_death_transitions'] += 1
+                counts['pre_vulnerable_projectile_proxy_death_transitions'] += int(danger_at_decision)
+                first_vulnerable_death_by_seed.setdefault(str(seed), seq)
         eligible = (pre['alive'] and post['alive'] and
                     not pre.get('invulnerable', False) and
                     pre['deaths'] == post['deaths'])
@@ -168,6 +184,10 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
             stall_streak = 0
         max_stall_streak = max(max_stall_streak, stall_streak)
     eligible = counts['eligible_vulnerable_steps']
+    pre_vulnerable_total = counts['pre_vulnerable_decisions']
+    counts['fraction_pre_vulnerable_decisions_with_death_increment'] = (
+        counts['pre_vulnerable_death_transitions'] / pre_vulnerable_total
+        if pre_vulnerable_total else None)
     counts.update(
         distinct_movement_actions=len(distinct_actions),
         max_identical_movement_action_streak=max_same_action,
@@ -184,11 +204,14 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
         'classification':'read_only_native_trace_diagnostic_not_gameplay_improvement',
         'scope':'one-frame, no-skill, actual native evaluation traces',
         'game_seeds':sorted(per_seed),
+        'first_vulnerable_death_action_index_by_seed':first_vulnerable_death_by_seed,
         'bounds_px':{'left':BOUNDS[0],'right':BOUNDS[1],'top':BOUNDS[2],'bottom':BOUNDS[3]},
         'edge_margin_px':edge_margin_px,'min_projected_progress_px':min_progress_px,
         'metrics':counts,
         'limits':['Boundary collision box must be checked in pinned native C source.',
                   'Linear projectile closest approach is a proxy, not verified collision risk.',
+                  'Fatal decisions count toward pre-vulnerable death attribution, but not post-displacement/wall-pinning metrics because death/respawn may teleport the player.',
+                  'Death increments do not identify bullet versus laser impact; laser geometry and damage source remain unavailable.',
                   'Per-seed trace continuity and real native game/library provenance need independent validation.',
                   'Logit/command or motion diversity alone is not a genuine dodge.',
                   'No replay/video or learned-model promotion is established by this audit.']
