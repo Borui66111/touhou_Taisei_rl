@@ -35,6 +35,13 @@ LEGACY_MISSING_METRICS = {
 LEGACY_EVENT_TAGS = {
     "T-20261025-28": ("failure_diagnosis_and_source_fix", "fix_committed_not_rerun"),
 }
+# A committed Windows-integration event has an out-of-schema kind and a
+# retrospective timestamp earlier than its parent. Never rewrite its bytes.
+# The exception is bound to exact id, tag, timestamp and parent identity;
+# all new events must still use the standard schema and monotonic timestamps.
+LEGACY_OUT_OF_ORDER = {
+    "T-20261028-55": ("implementation", "succeeded", "2026-10-28T08:00:00Z", ("T-20261028-54",)),
+}
 LEGACY_EVIDENCE_TYPES = {"source_fix", "test"}
 # Preserve historical aliases only for the two precisely identified E5 entries.
 LEGACY_EVIDENCE_BY_ID = {
@@ -84,7 +91,11 @@ def validate(events):
             raise ValueError(f"event {index}: missing/duplicate event id")
         known_legacy = (e["event_id"] in LEGACY_EVENT_TAGS
                         and (e["kind"], e["status"]) == LEGACY_EVENT_TAGS[e["event_id"]])
-        if e["level"] not in LEVELS or (not known_legacy and (e["kind"] not in KINDS or e["status"] not in STATUSES)):
+        old_order_identity = LEGACY_OUT_OF_ORDER.get(key)
+        old_order_match = (old_order_identity is not None and
+                           (e["kind"], e["status"], e["timestamp_utc"],
+                            tuple(e["parent_ids"])) == old_order_identity)
+        if e["level"] not in LEVELS or (not (known_legacy or old_order_match) and (e["kind"] not in KINDS or e["status"] not in STATUSES)):
             raise ValueError(f"{key}: unknown level/kind/status")
         if e["project"] != "touhou_taisei_rl":
             raise ValueError(f"{key}: unexpected project")
@@ -94,7 +105,7 @@ def validate(events):
                 raise ValueError("not UTC")
         except (TypeError, ValueError) as exc:
             raise ValueError(f"{key}: invalid UTC timestamp") from exc
-        if prev_date is not None and d < prev_date:
+        if prev_date is not None and d < prev_date and not old_order_match:
             raise ValueError(f"{key}: timestamps must not regress")
         if not isinstance(e["parent_ids"], list) or any(
                 p not in ids for p in e["parent_ids"]):
@@ -123,7 +134,7 @@ def validate(events):
         if any(43000 <= x <= 43099 for x in _seed_values(metrics)):
             raise ValueError(f"{key}: sealed final seed in research metrics")
         ids.add(key)
-        prev_date = d
+        prev_date = max(prev_date, d) if prev_date is not None else d
     return {"events": len(events), "last_event": events[-1]["event_id"] if events else None}
 
 
