@@ -34,6 +34,23 @@ class LedgerTest(unittest.TestCase):
         self.assertGreaterEqual(len(rows), 9)
         self.assertEqual(len({x["event_id"] for x in rows}), len(rows))
 
+    def test_immutable_event55_out_of_order_exception_is_exact(self):
+        rows = read_ledger(HERE / "events.jsonl")
+        e = next(row for row in rows if row["event_id"] == "T-20261028-55")
+        self.assertEqual((e["kind"], e["status"], e["timestamp_utc"], e["parent_ids"]),
+                         ("implementation", "succeeded", "2026-10-28T08:00:00Z", ["T-20261028-54"]))
+        # A forged or edited event with the same ID cannot borrow the exception.
+        changed = copy.deepcopy(rows)
+        bad = next(row for row in changed if row["event_id"] == "T-20261028-55")
+        bad["timestamp_utc"] = "2026-10-28T08:00:01Z"
+        with self.assertRaisesRegex(ValueError, "unknown level/kind/status"):
+            validate(changed)
+
+    def test_implementation_tag_remains_forbidden_for_new_events(self):
+        e = event(kind="implementation", status="succeeded")
+        with self.assertRaisesRegex(ValueError, "unknown level/kind/status"):
+            validate([e])
+
     def test_linked_append_preserves_old_bytes(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "events.jsonl"
