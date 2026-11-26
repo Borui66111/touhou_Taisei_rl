@@ -1,0 +1,155 @@
+{
+  "config_fields_never_read_by_step": [
+    "no_bomb_bonus"
+  ],
+  "discounted_costs_baseline": {
+    "effective_horizon_frames": 199.99999999999983,
+    "final_death_cost": 219.99999999999983,
+    "gamma": 0.995,
+    "nonfinal_death_cost": 66.81350926336374,
+    "nonfinal_death_in_survival_frames": 66.81350926336374,
+    "nonfinal_over_final": 0.30369776937892634,
+    "reward_for_24000_boss_hp": 480.0,
+    "value_survive_indefinitely": 199.99999999999983,
+    "weight_of_event_1000_frames_ahead": 0.0066539685788319656
+  },
+  "discounted_costs_e1_survival_first_challenger": {
+    "effective_horizon_frames": 199.99999999999983,
+    "final_death_cost": 60.4,
+    "gamma": 0.995,
+    "nonfinal_death_cost": 30.113627018526728,
+    "nonfinal_death_in_survival_frames": 15056.813509263364,
+    "nonfinal_over_final": 0.49856998375044254,
+    "reward_for_24000_boss_hp": 24.0,
+    "value_survive_indefinitely": 0.3999999999999997,
+    "weight_of_event_1000_frames_ahead": 0.0066539685788319656
+  },
+  "e1_survival_first_challenger_weights": {
+    "damage_weight": 0.001,
+    "death_penalty": -30.0,
+    "graze_weight": 0.0,
+    "loss_penalty": -30.0,
+    "survival_weight": 0.002,
+    "win_bonus": 100.0
+  },
+  "env_reward_defaults": {
+    "damage_weight": 0.02,
+    "death_penalty": -10.0,
+    "graze_weight": 0.001,
+    "loss_penalty": -10.0,
+    "no_bomb_bonus": 0.0,
+    "survival_weight": 1.0,
+    "win_bonus": 20.0
+  },
+  "episodes_reconstructed": 80,
+  "max_abs_residual_all": 0.00046875000043655746,
+  "native_game_executed": false,
+  "non_alive_frames_per_death_terminated_eps": 66.66666666666667,
+  "per_file": {
+    "e3/teacher_bc_ppo_seed48020_evaluation.jsonl": {
+      "bombs_used": 0,
+      "distinct_boss_damage_totals": [
+        0.0
+      ],
+      "max_abs_residual": 0.0,
+      "mean_return": 1007.5739374999999,
+      "n": 16,
+      "non_alive_frames_per_death": 66.66666666666667,
+      "return_share": {
+        "boss_damage": 0.0,
+        "death": -0.029774489874595432,
+        "graze": 1.1351524264689509e-05,
+        "survival": 1.0396879683085294,
+        "terminal": -0.009924829958198478
+      },
+      "sha256": "654a5ead23cab9406344f784b79169dd37c120cca89b8b73a19dd3272225316a",
+      "truncated": 0
+    },
+    "e3/teacher_bc_seed48030_evaluation.jsonl": {
+      "bombs_used": 0,
+      "distinct_boss_damage_totals": [
+        0.0
+      ],
+      "max_abs_residual": 0.0,
+      "mean_return": 1306.5213125,
+      "n": 16,
+      "non_alive_frames_per_death": 66.66666666666667,
+      "return_share": {
+        "boss_damage": 0.0,
+        "death": -0.022961737947156526,
+        "graze": 1.631240133329245e-05,
+        "survival": 1.0305993381948755,
+        "terminal": -0.007653912649052175
+      },
+      "sha256": "703803e36e04845c45de50f203e883b14afc1e5ba965bf03f6c55854a510ca32",
+      "truncated": 0
+    },
+    "e4/risk_teacher_native.jsonl": {
+      "bombs_used": 0,
+      "distinct_boss_damage_totals": [
+        24000.0,
+        27899.6875,
+        31803.26171875,
+        38948.68359375,
+        57170.1875,
+        58272.515625,
+        66415.7265625,
+        66487.380859375,
+        67079.779296875
+      ],
+      "max_abs_residual": 0.00046875000043655746,
+      "mean_return": 7972.33025,
+      "n": 16,
+      "non_alive_frames_per_death": 67.04347826086956,
+      "return_share": {
+        "boss_damage": 0.09502824200243241,
+        "death": -0.0036062229107982576,
+        "graze": 5.785635887324161e-06,
+        "survival": 0.9096697292488605,
+        "terminal": -0.001097546103286426
+      },
+      "sha256": "e66b08af96a341651288256f42d93d90604e904c51921d4364f8b49ffa51f0e5",
+      "truncated": 2
+    },
+    "e4/teacher_bc_rebalanced_seed48030_native.jsonl": {
+      "bombs_used": 0,
+      "distinct_boss_damage_totals": [
+        0.0
+      ],
+      "max_abs_residual": 0.0,
+      "mean_return": 1347.5895,
+      "n": 16,
+      "non_alive_frames_per_death": 66.66666666666667,
+      "return_share": {
+        "boss_damage": 0.0,
+        "death": -0.02226197221038009,
+        "graze": 2.003577498934208e-05,
+        "survival": 1.0296625938388508,
+        "terminal": -0.00742065740346003
+      },
+      "sha256": "cefd841c784ac14accb39681070d6ec40ce12c52a13afd6f541d42bc247d8663",
+      "truncated": 0
+    },
+    "e4/teacher_bc_seed48030_native.jsonl": {
+      "bombs_used": 0,
+      "distinct_boss_damage_totals": [
+        0.0
+      ],
+      "max_abs_residual": 0.0,
+      "mean_return": 1265.6439375,
+      "n": 16,
+      "non_alive_frames_per_death": 66.66666666666667,
+      "return_share": {
+        "boss_damage": 0.0,
+        "death": -0.02370334903137005,
+        "graze": 1.4962739076052344e-05,
+        "survival": 1.031589502636084,
+        "terminal": -0.007901116343790017
+      },
+      "sha256": "8e050bc8cf983fe569bcab328adbfabfbcfa8d5f3d06d6355c9ed80a83bbf71e",
+      "truncated": 0
+    }
+  },
+  "schema": "taisei_rsi_reward_audit_v1",
+  "training_executed": false
+}

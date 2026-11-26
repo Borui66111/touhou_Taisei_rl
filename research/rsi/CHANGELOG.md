@@ -87,3 +87,11 @@
 **Verification:** E3 full native training/evaluation succeeded; source artifact SHA verified. One local offline exploratory reweighting test found macro recall increase 40.6%→49.2%, no change in 83.9% frame accuracy; **not yet proven better in native game**. No champion promotion, no new branch, no sealed seeds used.
 
 **Next:** Run E4, validate original dataset and checkpoint SHA, source tests, paired native survival/deaths/clears and contrast with unchanged teacher. Choose representation/curriculum pivot if improvement does not transfer.
+
+## 2026-11-26 — Reward-objective audit from escrowed native episodes
+
+**Issue:** Reward design had never been checked against real per-episode returns, and E1's heavy Bomb use was unexplained.
+
+**Fix:** Added `research/rsi/reward_audit.py` and `test_reward_audit.py` (6 tests). The audit reads `EnvConfig` and `step()` via `ast` and SHA-checks the escrow before use; no native code, training, or sealed seeds are touched.
+
+**Verification:** 80/80 archived native returns reconstruct (|residual| ≤ 4.7e-4). `no_bomb_bonus` is a dead field. Under γ=0.995 a non-final death costs ≈66.8 reward (≈67 survival frames). Ledger event `T-20261126-61`. No gameplay improvement is claimed and no reward coefficient was changed.
