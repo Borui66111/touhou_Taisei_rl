@@ -35,5 +35,10 @@ pkg-config --modversion sdl3
 echo "SDL3 shared library:"
 find "$PREFIX/lib" -maxdepth 2 -type f -name '*SDL3*' -print
 
+if [[ "${TAISEI_CI_SDL_ONLY:-0}" == 1 ]]; then
+  # Rebuilt-simulator workflows only need SDL3; they build Taisei via my_test/sim_rebuild.
+  [[ -n "${GITHUB_ENV:-}" ]] && { echo "PKG_CONFIG_PATH=$PKG_CONFIG_PATH"; echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH"; } >> "$GITHUB_ENV"
+  exit 0
+fi
 cd "$ROOT"
 bash scripts/build_taisei_sim.sh

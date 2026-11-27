@@ -1,0 +1,66 @@
+name: RSI rebuilt native simulator (public Taisei) build and validation
+
+# Builds libtaisei_sim from public taisei-project/taisei + my_test/sim_rebuild patch
+# from a fresh clone and validates it against the escrowed ORIGINAL taisei-sim evidence
+# (research/rsi/validate_rebuilt_sim.py). Development seeds only; no sealed seeds.
+on:
+  push:
+    branches: [research/rsi-automation-v1]
+    paths:
+      - "my_test/sim_rebuild/**"
+      - "research/rsi/validate_rebuilt_sim.py"
+      - "research/rsi/build_native_with_shared_sdl3.sh"
+      - "my_test/native_rl/env.py"
+      - "my_test/native_rl/taisei_ffi.py"
+      - ".github/workflows/rsi-rebuilt-sim.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rsi-native-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install native build and validation requirements
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git build-essential cmake ninja-build pkg-config gettext \
+            libfreetype-dev libwebp-dev libzstd-dev zlib1g-dev libpng-dev libssl-dev \
+            libopusfile-dev libunibreak-dev libcglm-dev
+          python -m pip install 'meson>=1.8' ninja 'numpy>=1.24' 'backports.zstd'
+          python -c 'from backports.zstd import ZstdCompressor, ZstdDecompressor; print("zstd OK")'
+      - name: Build SDL3 taisei-3.4.12 (shared)
+        env:
+          TAISEI_CI_SDL_ONLY: "1"
+        run: bash research/rsi/build_native_with_shared_sdl3.sh
+      - name: Build rebuilt libtaisei_sim from a fresh public clone (fail-closed)
+        run: |
+          bash my_test/sim_rebuild/build_rebuilt_sim.sh "$RUNNER_TEMP/taisei-sim-rebuild"
+          cat "$RUNNER_TEMP/taisei-sim-rebuild/rebuilt_sim.env" >> "$GITHUB_ENV"
+      - name: Validate against archived original-simulator evidence (6 checks)
+        run: |
+          mkdir -p research_evidence
+          python research/rsi/validate_rebuilt_sim.py \
+            --library "$TAISEI_SIM_LIBRARY" --resource-path "$TAISEI_SIM_RESOURCES" \
+            --taisei-exe "$RUNNER_TEMP/taisei-sim-rebuild/build/src/taisei" \
+            --upstream-commit "$(grep '^COMMIT=' my_test/sim_rebuild/UPSTREAM_PUBLIC.lock | cut -d= -f2)" \
+            --patch "my_test/sim_rebuild/$(grep '^PATCH=' my_test/sim_rebuild/UPSTREAM_PUBLIC.lock | cut -d= -f2)" \
+            --out research_evidence/rebuilt_sim_validation_ci.json
+      - name: Preserve validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rebuilt-sim-validation-${{ github.run_id }}
+          path: research_evidence/
+          if-no-files-found: warn
+          retention-days: 90
