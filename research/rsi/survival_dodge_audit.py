@@ -26,6 +26,9 @@ DIRECTIONS = ((0, 0), (0, -1), (0, 1), (-1, 0), (1, 0),
 LASER_GEOMETRY_STATUSES = ('absent', 'point_samples')
 
 
+RESPAWN_BELOW_VIEWPORT_PX = 64.0
+
+
 class InvalidTrace(ValueError):
     pass
 
@@ -41,7 +44,11 @@ def _norm_position(state, where):
         raise InvalidTrace(f'missing {where} state')
     x = _finite_number(state.get('player_x'), f'{where}.player_x') * WIDTH
     y = _finite_number(state.get('player_y'), f'{where}.player_y') * HEIGHT
-    if not (-2.0 <= x <= WIDTH+2.0 and -2.0 <= y <= HEIGHT+2.0):
+    # While dead/respawning the game moves the player in from below the viewport
+    # (Taisei player.c: y = lerp(PLR_SPAWN_POS_Y, VIEWPORT_H + 64, ...)); only then may
+    # y exceed the playfield. Alive positions keep the strict bound.
+    max_y = HEIGHT + RESPAWN_BELOW_VIEWPORT_PX + 2.0 if state.get('alive') is False else HEIGHT + 2.0
+    if not (-2.0 <= x <= WIDTH+2.0 and -2.0 <= y <= max_y):
         raise InvalidTrace(f'implausible {where} normalized position: ({x}, {y})')
     return x, y
 
@@ -145,7 +152,7 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
     counts = dict(total_steps=0, eligible_vulnerable_steps=0, boundary_steps=0,
                   outward_command_steps=0, outward_command_under_threat_steps=0,
                   linear_threat_steps=0, pinned_commands=0,
-                  death_increments=0, skill_requested=0,
+                  death_increments=0, hit_transitions=0, skill_requested=0,
                   pre_vulnerable_decisions=0, pre_vulnerable_death_transitions=0,
                   pre_vulnerable_projectile_proxy_steps=0,
                   pre_vulnerable_projectile_proxy_death_transitions=0,
@@ -193,13 +200,19 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
         pre, post = row['pre'], row['post']
         death_increment = post['deaths'] - pre['deaths']
         counts['death_increments'] += death_increment
+        # Taisei: a hit makes the player not-alive immediately, but `deaths` only
+        # increments when the deathbomb window ends (12 frames later, player not alive).
+        # The fatal decision is therefore the alive -> not-alive (hit) transition; a
+        # counter increment on the same step (synthetic or instant deaths) also counts.
+        fatal = bool(death_increment) or (pre['alive'] and not post['alive'])
+        counts['hit_transitions'] += int(pre['alive'] and not post['alive'])
         # Attribute fatal actions using the PRE-action vulnerable state. Conditioning
         # on post.alive/deaths here would silently discard the fatal decision.
         # Missing/None invulnerability is UNKNOWN, never silently vulnerable.
         vulnerability_known = isinstance(pre.get('invulnerable'), bool)
         if pre['alive'] and not vulnerability_known:
             counts['unknown_vulnerability_decisions'] += 1
-            counts['unknown_vulnerability_death_transitions'] += int(bool(death_increment))
+            counts['unknown_vulnerability_death_transitions'] += int(fatal)
         pre_vulnerable = pre['alive'] and vulnerability_known and not pre['invulnerable']
         if pre_vulnerable:
             counts['pre_vulnerable_decisions'] += 1
@@ -209,7 +222,7 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
             counts['pre_vulnerable_projectile_proxy_steps'] += int(danger_at_decision)
             counts['pre_vulnerable_laser_proxy_steps'] += int(laser_danger)
             counts['pre_vulnerable_lasers_unmeasured_steps'] += int(laser_state in ('unmeasured', 'unknown'))
-            if death_increment:
+            if fatal:
                 counts['pre_vulnerable_death_transitions'] += 1
                 counts['pre_vulnerable_projectile_proxy_death_transitions'] += int(danger_at_decision)
                 counts['pre_vulnerable_laser_proxy_death_transitions'] += int(laser_danger)
@@ -287,6 +300,7 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
                   'Fatal decisions count toward pre-vulnerable death attribution and fatal_* boundary/outward counts (pre position + command), but not post-displacement/pinned metrics because death/respawn may teleport the player.',
                   'Missing invulnerability is counted as unknown_vulnerability_* and excluded from vulnerable denominators; traces written before trace-writer v2 encoded unknown as False and cannot be distinguished.',
                   'Laser proxy uses only the nearest sampled laser point (point_samples), not segment geometry; deaths with lasers active but unmeasured are counted separately. Damage source (bullet vs laser) is still not observed.',
+                  'Death attribution uses the alive->not-alive hit transition (the deaths counter increments after the 12-frame deathbomb window, when the player is already not alive); a hit cancelled by a deathbomb is still counted as a fatal decision.',
                   'Per-seed trace continuity and real native game/library provenance need independent validation.',
                   'Logit/command or motion diversity alone is not a genuine dodge.',
                   'No replay/video or learned-model promotion is established by this audit.']

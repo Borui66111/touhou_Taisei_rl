@@ -108,6 +108,44 @@ class LaserGeometry(unittest.TestCase):
         self.assertEqual(analyze([row()])['schema'], 'taisei_survival_dodge_wall_audit_v2')
 
 
+class DelayedDeathCounter(unittest.TestCase):
+    def test_hit_transition_is_the_fatal_decision(self):
+        # Real Taisei: hit -> alive False now; deaths increments 12 steps later while dead.
+        hit = row(x=16, action=3, threat=True, alive_after=False, post_deaths=0)
+        dead = [row(i, x=240) for i in range(1, 13)]
+        for k, r in enumerate(dead):
+            r['pre']['alive'] = False
+            r['post']['alive'] = False
+            if k == 11:
+                r['post']['deaths'] = 1
+        m = analyze([hit] + dead)['metrics']
+        self.assertEqual(m['hit_transitions'], 1)
+        self.assertEqual(m['death_increments'], 1)
+        self.assertEqual(m['pre_vulnerable_death_transitions'], 1)
+        self.assertEqual(m['pre_vulnerable_projectile_proxy_death_transitions'], 1)
+        self.assertEqual(m['fatal_outward_command_decisions'], 1)
+
+
+class RespawnPosition(unittest.TestCase):
+    def test_dead_player_below_viewport_accepted(self):
+        r = row(x=240, alive_after=False, post_deaths=1)
+        r['post']['player_y'] = 590/560  # respawn glide from VIEWPORT_H + 64
+        m = analyze([r])['metrics']
+        self.assertEqual(m['pre_vulnerable_death_transitions'], 1)
+
+    def test_alive_player_below_viewport_rejected(self):
+        r = row(x=240)
+        r['post']['player_y'] = 590/560
+        with self.assertRaisesRegex(InvalidTrace, 'implausible post'):
+            analyze([r])
+
+    def test_dead_player_beyond_respawn_path_rejected(self):
+        r = row(x=240, alive_after=False, post_deaths=1)
+        r['post']['player_y'] = 700/560
+        with self.assertRaisesRegex(InvalidTrace, 'implausible post'):
+            analyze([r])
+
+
 @unittest.skipUnless(importlib.util.find_spec('torch'), 'torch not installed')
 class TraceWriter(unittest.TestCase):
     def setUp(self):
