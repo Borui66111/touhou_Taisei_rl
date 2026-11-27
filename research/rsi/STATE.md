@@ -153,3 +153,25 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - **Performance:** about 5k single-frame decisions per second per core including Python observation building (12,000 decisions in about 2.4 s).
 - **Not changed:** `UPSTREAM.lock`, `build_taisei_sim.sh`, CI native workflows (still point at the unreachable original). No training, no sealed seeds, no champion change.
 - **Next:** point the native workflows and local operator at the rebuild; apply the A2 audit-validity patch; then run A3 (E1 no-skill vs E1+edge-veto vs E2, pilot seeds 42152–42153).
+
+## 2026-11-27: First RL on the rebuilt simulator: E7 DAgger and A3 baselines (T-20261127-65 plan, -66 result)
+
+Mean alive frames, Stage 1 Easy, no skills, development seeds 42152-42167 (0 clears, 0 Bombs in every arm):
+
+| Arm | Mean alive | Deaths from steering into a wall (audit v2) | Vulnerable steps wall-pinned |
+|---|---|---|---|
+| E2 risk teacher (handcrafted) | **7432.7** | 0/46 | 0.000 |
+| **E7 DAgger seed 48700** | **4128.3** | 1/48 | 0.000 |
+| E7 DAgger seed 48600 | 3827.3 | 0/48 | 0.000 |
+| E7 DAgger seed 48500 | 2160.8 | 0/48 | 0.000 |
+| heuristic | 1826.9 | 41/48 | 0.396 |
+| E1-repro challenger (no skills) | 1328.8 | 44/48 | 0.444 |
+| E1-repro control (no skills) | 1030.0 | 48/48 | 0.876 |
+
+- **Preregistered verdict:** NOT SUPPORTED (E7 mean 3372 < 4000), not falsified. Still the best neural no-skill policy so far, and wall-pinning is gone.
+- **E1 is not reproducible from a single seed:** regenerated with the same code and seed on the bit-exact simulator, control went 3454 -> 4292 and challenger 4477 -> 2077.
+- **Audit fixes found by the first real traces:**
+  - respawn positions below the viewport are valid while not alive;
+  - deaths are attributed at the hit, not at the counter increment 12 frames later.
+- **Edge veto:** cannot run, because the teacher fallback can also point outward and the veto is fail-loud by design.
+- **Next:** E8 capacity vs data, then PPO fine-tuning from DAgger. Wider networks need a TSKILL2 contract change for live play.
