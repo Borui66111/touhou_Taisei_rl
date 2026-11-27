@@ -41,6 +41,10 @@ on:
       - "research/rsi/test_reward_audit.py"
       - "research/rsi/validate_rebuilt_sim.py"
       - "research/rsi/test_validate_rebuilt_sim.py"
+      - "research/rsi/test_survival_audit_validity.py"
+      - "research/rsi/test_survival_fatal_transitions.py"
+      - "research/rsi/test_survival_dodge_audit.py"
+      - "research/rsi/survival_dodge_audit.py"
       - "research/rsi/evidence/rebuilt_sim_validation_20261127.json"
       - "my_test/sim_rebuild/**"
       - "my_test/native_rl/taisei_ffi.py"
@@ -90,6 +94,9 @@ jobs:
           python -m unittest discover -s research/rsi -p 'test_e2_teacher_compare.py' -v
           python -m unittest discover -s research/rsi -p 'test_reward_audit.py' -v
           python -m unittest discover -s research/rsi -p 'test_validate_rebuilt_sim.py' -v
+          python -m unittest discover -s research/rsi -p 'test_survival_dodge_audit.py' -v
+          python -m unittest discover -s research/rsi -p 'test_survival_fatal_transitions.py' -v
+          python -m unittest discover -s research/rsi -p 'test_survival_audit_validity.py' -v
       - name: Diagnose pinned source access without running native Taisei
         run: |
           set +e

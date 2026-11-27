@@ -476,6 +476,24 @@ def _nearest_projectile_trace(obs):
     }
 
 
+def _nearest_laser_trace(obs):
+    """Nearest active laser point sample (env sorts by distance); point, not segment."""
+    for q in obs.get('lasers', ()):
+        if len(q) >= 4 and float(q[3]) == 1.0:
+            dx, dy = float(q[0]) * 480.0, float(q[1]) * 560.0
+            return {'current_separation_px': math.hypot(dx, dy),
+                    'dx_px': dx, 'dy_px': dy, 'half_width_px': float(q[2]) * 30.0}
+    return None
+
+
+def _laser_geometry_status(obs):
+    if _nearest_laser_trace(obs) is not None:
+        return 'point_samples'
+    if int(obs.get('laser_count', 0)) == 0:
+        return 'absent'
+    return None  # lasers counted but no active point sample: unmeasured
+
+
 def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
              sampled=False, device='cpu', planner=None, trace_callback=None,
              sampling_seed=None, force_skill_none=False, movement_guard=None):
@@ -567,11 +585,14 @@ def evaluate(cfg:EnvConfig, checkpoint_path, episodes=20,seed=90000,
                         'player_x':float(player[0]) if len(player)>0 else None,
                         'player_y':float(player[1]) if len(player)>1 else None,
                         'alive':bool(obs.get('skill_state',[False])[0]),
-                        'invulnerable':bool(player[7]) if len(player)>7 else False,
+                        # None = unknown (never silently vulnerable); see survival_dodge_audit v2.
+                        'invulnerable':bool(player[7]) if len(player)>7 else None,
                         'deaths':int(obs.get('deaths',0)),
                         'projectile_count':int(obs.get('projectile_count',0)),
                         'laser_count':int(obs.get('laser_count',0)),
                         'nearest_projectile':_nearest_projectile_trace(obs),
+                        'nearest_laser_point':_nearest_laser_trace(obs),
+                        'laser_geometry_status':_laser_geometry_status(obs),
                     }
                 obs,reward,term,trunc,info=env.step(action)
                 if trace_callback is not None:

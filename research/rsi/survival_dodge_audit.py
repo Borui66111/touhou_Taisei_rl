@@ -21,6 +21,11 @@ DIRECTIONS = ((0, 0), (0, -1), (0, 1), (-1, 0), (1, 0),
               (-1, -1), (1, -1), (-1, 1), (1, 1))
 
 
+# 'absent': no active laser; 'point_samples': nearest sampled laser point logged
+# (segment geometry between points is NOT available); missing/None: not logged.
+LASER_GEOMETRY_STATUSES = ('absent', 'point_samples')
+
+
 class InvalidTrace(ValueError):
     pass
 
@@ -70,6 +75,12 @@ def _check_step(row):
     nearest = pre.get('nearest_projectile')
     if nearest is not None and not isinstance(nearest, dict):
         raise InvalidTrace('nearest_projectile must be a dict or null')
+    laser = pre.get('nearest_laser_point')
+    if laser is not None and not isinstance(laser, dict):
+        raise InvalidTrace('nearest_laser_point must be a dict or null')
+    status = pre.get('laser_geometry_status')
+    if status is not None and status not in LASER_GEOMETRY_STATUSES:
+        raise InvalidTrace(f'unknown laser_geometry_status: {status!r}')
     return px, py, nx, ny, a
 
 
@@ -89,6 +100,43 @@ def _threat_proxy(pre, *, clearance_px=18.0, horizon_frames=20.0):
     return (t <= horizon_frames and d <= 6.0 + max(halfwidth, halfheight) + clearance_px)
 
 
+def _laser_proxy(pre, *, clearance_px=18.0):
+    """Nearest sampled laser point within clearance; a proxy, NOT laser collision."""
+    q = pre.get('nearest_laser_point')
+    if not q:
+        return False
+    d = _finite_number(q.get('current_separation_px'), 'laser point separation')
+    hw = _finite_number(q.get('half_width_px'), 'laser point half_width_px')
+    if min(d, hw) < 0:
+        raise InvalidTrace('negative laser geometry')
+    return d <= 6.0 + hw + clearance_px
+
+
+def _laser_state(pre):
+    """Return 'none' | 'measured' | 'unmeasured' for lasers at decision time."""
+    count = pre.get('laser_count')
+    if pre.get('laser_geometry_status') == 'point_samples' and pre.get('nearest_laser_point'):
+        return 'measured'
+    if pre.get('laser_geometry_status') == 'absent' or count == 0:
+        return 'none'
+    if count is None and pre.get('laser_geometry_status') is None:
+        return 'unknown'
+    return 'unmeasured'
+
+
+def _boundary_outward(px, py, action, edge_margin_px):
+    dx, dy = DIRECTIONS[action % 9]
+    left, right, top, bottom = BOUNDS
+    near_left = px <= left+edge_margin_px
+    near_right = px >= right-edge_margin_px
+    near_top = py <= top+edge_margin_px
+    near_bottom = py >= bottom-edge_margin_px
+    boundary = near_left or near_right or near_top or near_bottom
+    outward = ((near_left and dx < 0) or (near_right and dx > 0)
+               or (near_top and dy < 0) or (near_bottom and dy > 0))
+    return dx, dy, boundary, outward
+
+
 def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
     if not isinstance(rows, list) or not rows:
         raise InvalidTrace('empty trace; no actual actions to audit')
@@ -100,7 +148,17 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
                   death_increments=0, skill_requested=0,
                   pre_vulnerable_decisions=0, pre_vulnerable_death_transitions=0,
                   pre_vulnerable_projectile_proxy_steps=0,
-                  pre_vulnerable_projectile_proxy_death_transitions=0)
+                  pre_vulnerable_projectile_proxy_death_transitions=0,
+                  unknown_vulnerability_decisions=0,
+                  unknown_vulnerability_death_transitions=0,
+                  fatal_boundary_decisions=0,
+                  fatal_outward_command_decisions=0,
+                  fatal_outward_command_under_threat_decisions=0,
+                  pre_vulnerable_laser_proxy_steps=0,
+                  pre_vulnerable_laser_proxy_death_transitions=0,
+                  pre_vulnerable_lasers_unmeasured_steps=0,
+                  pre_vulnerable_death_transitions_lasers_unmeasured=0,
+                  pre_vulnerable_death_transitions_no_threat_proxy=0)
     per_seed = {}
     first_vulnerable_death_by_seed = {}
     distinct_actions = set()
@@ -137,32 +195,45 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
         counts['death_increments'] += death_increment
         # Attribute fatal actions using the PRE-action vulnerable state. Conditioning
         # on post.alive/deaths here would silently discard the fatal decision.
-        pre_vulnerable = pre['alive'] and not pre.get('invulnerable', False)
+        # Missing/None invulnerability is UNKNOWN, never silently vulnerable.
+        vulnerability_known = isinstance(pre.get('invulnerable'), bool)
+        if pre['alive'] and not vulnerability_known:
+            counts['unknown_vulnerability_decisions'] += 1
+            counts['unknown_vulnerability_death_transitions'] += int(bool(death_increment))
+        pre_vulnerable = pre['alive'] and vulnerability_known and not pre['invulnerable']
         if pre_vulnerable:
             counts['pre_vulnerable_decisions'] += 1
             danger_at_decision = _threat_proxy(pre)  # bullet proxy, NOT laser geometry
+            laser_state = _laser_state(pre)
+            laser_danger = laser_state == 'measured' and _laser_proxy(pre)
             counts['pre_vulnerable_projectile_proxy_steps'] += int(danger_at_decision)
+            counts['pre_vulnerable_laser_proxy_steps'] += int(laser_danger)
+            counts['pre_vulnerable_lasers_unmeasured_steps'] += int(laser_state in ('unmeasured', 'unknown'))
             if death_increment:
                 counts['pre_vulnerable_death_transitions'] += 1
                 counts['pre_vulnerable_projectile_proxy_death_transitions'] += int(danger_at_decision)
+                counts['pre_vulnerable_laser_proxy_death_transitions'] += int(laser_danger)
+                counts['pre_vulnerable_death_transitions_lasers_unmeasured'] += int(
+                    laser_state in ('unmeasured', 'unknown'))
+                counts['pre_vulnerable_death_transitions_no_threat_proxy'] += int(
+                    not danger_at_decision and not laser_danger)
                 first_vulnerable_death_by_seed.setdefault(str(seed), seq)
-        eligible = (pre['alive'] and post['alive'] and
-                    not pre.get('invulnerable', False) and
+                # Fatal decisions use PRE position + command only (no post
+                # displacement, which respawn may teleport), so outward-wall
+                # commands that ended in death are not survivorship-filtered away.
+                _, _, f_boundary, f_outward = _boundary_outward(px, py, action, edge_margin_px)
+                counts['fatal_boundary_decisions'] += int(f_boundary)
+                counts['fatal_outward_command_decisions'] += int(f_outward)
+                counts['fatal_outward_command_under_threat_decisions'] += int(
+                    f_outward and (danger_at_decision or laser_danger))
+        eligible = (pre_vulnerable and post['alive'] and
                     pre['deaths'] == post['deaths'])
         if not eligible:
             outward_streak = stall_streak = 0
             continue
         counts['eligible_vulnerable_steps'] += 1
-        dx, dy = DIRECTIONS[action % 9]
-        left, right, top, bottom = BOUNDS
-        near_left = px <= left+edge_margin_px
-        near_right = px >= right-edge_margin_px
-        near_top = py <= top+edge_margin_px
-        near_bottom = py >= bottom-edge_margin_px
-        boundary = near_left or near_right or near_top or near_bottom
+        dx, dy, boundary, outward = _boundary_outward(px, py, action, edge_margin_px)
         counts['boundary_steps'] += int(boundary)
-        outward = ((near_left and dx < 0) or (near_right and dx > 0)
-                   or (near_top and dy < 0) or (near_bottom and dy > 0))
         counts['outward_command_steps'] += int(outward)
         danger = _threat_proxy(pre)
         counts['linear_threat_steps'] += int(danger)
@@ -196,11 +267,14 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
         fraction_vulnerable_steps_near_boundary=(counts['boundary_steps']/eligible if eligible else None),
         fraction_vulnerable_steps_command_outward=(counts['outward_command_steps']/eligible if eligible else None),
         fraction_vulnerable_steps_pinned=(counts['pinned_commands']/eligible if eligible else None),
+        fraction_fatal_decisions_command_outward=(
+            counts['fatal_outward_command_decisions']/counts['pre_vulnerable_death_transitions']
+            if counts['pre_vulnerable_death_transitions'] else None),
         fraction_threat_proxy_steps_command_outward=(counts['outward_command_under_threat_steps']/counts['linear_threat_steps']
                                                     if counts['linear_threat_steps'] else None),
     )
     return {
-        'schema':'taisei_survival_dodge_wall_audit_v1',
+        'schema':'taisei_survival_dodge_wall_audit_v2',
         'classification':'read_only_native_trace_diagnostic_not_gameplay_improvement',
         'scope':'one-frame, no-skill, actual native evaluation traces',
         'game_seeds':sorted(per_seed),
@@ -210,8 +284,9 @@ def analyze(rows, *, edge_margin_px=12.0, min_progress_px=0.25):
         'metrics':counts,
         'limits':['Boundary collision box must be checked in pinned native C source.',
                   'Linear projectile closest approach is a proxy, not verified collision risk.',
-                  'Fatal decisions count toward pre-vulnerable death attribution, but not post-displacement/wall-pinning metrics because death/respawn may teleport the player.',
-                  'Death increments do not identify bullet versus laser impact; laser geometry and damage source remain unavailable.',
+                  'Fatal decisions count toward pre-vulnerable death attribution and fatal_* boundary/outward counts (pre position + command), but not post-displacement/pinned metrics because death/respawn may teleport the player.',
+                  'Missing invulnerability is counted as unknown_vulnerability_* and excluded from vulnerable denominators; traces written before trace-writer v2 encoded unknown as False and cannot be distinguished.',
+                  'Laser proxy uses only the nearest sampled laser point (point_samples), not segment geometry; deaths with lasers active but unmeasured are counted separately. Damage source (bullet vs laser) is still not observed.',
                   'Per-seed trace continuity and real native game/library provenance need independent validation.',
                   'Logit/command or motion diversity alone is not a genuine dodge.',
                   'No replay/video or learned-model promotion is established by this audit.']
