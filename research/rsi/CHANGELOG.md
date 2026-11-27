@@ -95,3 +95,11 @@
 **Fix:** Added `research/rsi/reward_audit.py` and `test_reward_audit.py` (6 tests). The audit reads `EnvConfig` and `step()` via `ast` and SHA-checks the escrow before use; no native code, training, or sealed seeds are touched.
 
 **Verification:** 80/80 archived native returns reconstruct (|residual| ≤ 4.7e-4). `no_bomb_bonus` is a dead field. Under γ=0.995 a non-final death costs ≈66.8 reward (≈67 survival frames). Ledger event `T-20261126-61`. No gameplay improvement is claimed and no reward coefficient was changed.
+
+## 2026-11-27: Rebuilt native simulator from public Taisei
+
+**Issue:** The pinned simulator `touhourl/taisei-sim@789200ff` is unreachable (deleted or private), which blocked every native experiment for 32 days.
+
+**Fix:** `my_test/sim_rebuild/` rebuilds `libtaisei_sim.so` (ABI v1, unchanged Python binding) from public `taisei-project/taisei@5668c41b` plus a reconstruction patch. `research/rsi/validate_rebuilt_sim.py` compares any build against the original's escrowed evidence. `research/rsi/test_validate_rebuilt_sim.py` (source-only, registered in research-validation CI) guards the lock, the patch hash, C/Python ABI field order and the recorded evidence.
+
+**Validation:** all six checks pass on a fresh-clone build: 12,000/12,000 bit-identical archived observations, E4 16/16 episodes identical on 20 metrics, E2 aggregates, smoke, determinism, and the replay round trip. The digest hash is new and never compared.

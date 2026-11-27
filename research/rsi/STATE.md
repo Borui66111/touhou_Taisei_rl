@@ -137,3 +137,19 @@ A bounded GitHub Actions pilot verifies that the genuine pinned Taisei simulator
 - **Scheduled task:** no scheduled task exists on the Claude account used by this session; the ID `6afc08f8db948191bacb81060ad1dcfe` is not visible here. Nothing was created or duplicated.
 - **Blockers:** exact simulator `789200ff` — authenticated check by the user's own linked GitHub account also fails (T-20261126-62), so remote access is exhausted; recovery needs a saved checkout, the owner, or a reviewed re-pin; push access to this branch from the migration session (denied); E1 archive verification.
 - **Next:** push this commit; verify the E1 archive; when source is available, run skill-disabled E1 vs E2 on 42152–42153; afterwards run a preregistered **single-factor** Bomb-cost (or γ) ablation.
+
+## 2026-11-27: Simulator rebuilt from public Taisei and validated against the original (L4; T-20261127-63)
+
+- **User decision:** stop waiting for `touhourl/taisei-sim` and rebuild the simulator from the public game source.
+- **Built:** `my_test/sim_rebuild/` pins public Taisei `5668c41b` (2026-10-15) with the same four submodule SHAs as the original build, plus a reconstruction patch (`src/sim/` libtaisei_sim ABI v1, inert `sim_hooks`). `build_rebuilt_sim.sh` builds it fail-closed from a fresh clone.
+- **Validated against the original's archived evidence** (`research/rsi/validate_rebuilt_sim.py` → `evidence/rebuilt_sim_validation_20261127.json`, all 6 checks PASS on a fresh-clone build):
+  - 12,000 E3 teacher decisions: all 528-d observations bit-identical;
+  - E4 teacher, 16 closed-loop episodes: 0 mismatches across 20 metrics;
+  - E2 heuristic and teacher aggregates identical;
+  - smoke and determinism logs identical;
+  - sim replays pass the real game's `--verify-replay`, with a negative control.
+- **Reverse-engineered conventions** (each localized by the first diverging archived step): the reset warm-up frame, projectile velocity, boss `phase_type`+1 and timeout, instant dialogue, the 15-step game-over freeze, and the pre-2026-10-20 upstream base. See `my_test/sim_rebuild/README.md`.
+- **Consequence:** W1 (native execution) is unblocked. E1–E4 numbers remain comparable, because the rebuild reproduces their archived trajectories exactly on every checked path. Bomb/Special, lasers, other stages and characters have no archived reference, only replay self-consistency.
+- **Performance:** about 5k single-frame decisions per second per core including Python observation building (12,000 decisions in about 2.4 s).
+- **Not changed:** `UPSTREAM.lock`, `build_taisei_sim.sh`, CI native workflows (still point at the unreachable original). No training, no sealed seeds, no champion change.
+- **Next:** point the native workflows and local operator at the rebuild; apply the A2 audit-validity patch; then run A3 (E1 no-skill vs E1+edge-veto vs E2, pilot seeds 42152–42153).

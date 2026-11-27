@@ -39,6 +39,11 @@ on:
       - "research/rsi/test_inspect_rendered_tsr.py"
       - "research/rsi/reward_audit.py"
       - "research/rsi/test_reward_audit.py"
+      - "research/rsi/validate_rebuilt_sim.py"
+      - "research/rsi/test_validate_rebuilt_sim.py"
+      - "research/rsi/evidence/rebuilt_sim_validation_20261127.json"
+      - "my_test/sim_rebuild/**"
+      - "my_test/native_rl/taisei_ffi.py"
       - "my_test/native_rl/env.py"
       - ".github/workflows/rsi-research-validation.yml"
   workflow_dispatch: {}
@@ -84,6 +89,7 @@ jobs:
           python -m unittest discover -s research/rsi -p 'test_risk_aware_teacher.py' -v
           python -m unittest discover -s research/rsi -p 'test_e2_teacher_compare.py' -v
           python -m unittest discover -s research/rsi -p 'test_reward_audit.py' -v
+          python -m unittest discover -s research/rsi -p 'test_validate_rebuilt_sim.py' -v
       - name: Diagnose pinned source access without running native Taisei
         run: |
           set +e

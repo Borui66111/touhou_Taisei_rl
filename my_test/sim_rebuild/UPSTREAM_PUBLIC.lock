@@ -1,0 +1,10 @@
+REPO_URL=https://github.com/taisei-project/taisei.git
+COMMIT=5668c41b41f7227d21fc80cf56997d4d30356ce7
+PATCH=0001-libtaisei_sim-taisei-sim-ABI-v1-reconstruction.patch
+PATCH_SHA256=15c5defc44e7c59e5b789d5aadd71a43301749d5aee462e253396fa10a4e209a
+SUBMODULE_external/basis_universal=380ef9389b38ec42506d5728dd05e94ac2f3c301
+SUBMODULE_external/gamecontrollerdb=7988b5e84c31616200ee2ffd2347386c6b3165a8
+SUBMODULE_external/koishi=5701d88c413508c75b5ac69faf1de7dc629e0f7d
+SUBMODULE_external/openlibm=8f5d88c270e4a46b152635dedad2eb4bc17a1dc2
+SDL_REPO=https://github.com/taisei-project/SDL.git
+SDL_TAG=taisei-3.4.12

@@ -1,0 +1,228 @@
+{
+  "checks": {
+    "demo_replay": {
+      "bitwise_identical_rows": 12000,
+      "episode_boundaries": [
+        0,
+        7857
+      ],
+      "first_divergence": null,
+      "max_abs_diff": 0.0,
+      "pass": true,
+      "steps": 12000
+    },
+    "determinism": {
+      "archives": {
+        "e3": {
+          "identical": true,
+          "identical_frames": {
+            "original": 600,
+            "rebuilt": 600
+          },
+          "observed_max_projectiles": {
+            "original": 26,
+            "rebuilt": 26
+          },
+          "result": {
+            "original": "PASS",
+            "rebuilt": "PASS"
+          },
+          "seed": {
+            "original": 42000,
+            "rebuilt": 42000
+          },
+          "stage": {
+            "original": 1,
+            "rebuilt": 1
+          }
+        },
+        "e4": {
+          "identical": true,
+          "identical_frames": {
+            "original": 600,
+            "rebuilt": 600
+          },
+          "observed_max_projectiles": {
+            "original": 26,
+            "rebuilt": 26
+          },
+          "result": {
+            "original": "PASS",
+            "rebuilt": "PASS"
+          },
+          "seed": {
+            "original": 42000,
+            "rebuilt": 42000
+          },
+          "stage": {
+            "original": 1,
+            "rebuilt": 1
+          }
+        }
+      },
+      "pass": true
+    },
+    "replay_roundtrip": {
+      "pass": true,
+      "recorded": {
+        "deaths": 3,
+        "status": 3,
+        "steps": 7857
+      },
+      "tsr_bytes": 29679,
+      "verify_skip_dialog_0": {
+        "desync": [
+          "W: replay/state>replay_state_check_desync: Frame 7500: replay desync detected! 0xf119 != 0x83e1"
+        ],
+        "returncode": 1
+      },
+      "verify_skip_dialog_1": {
+        "desync": [],
+        "returncode": 0
+      }
+    },
+    "smoke": {
+      "archives": {
+        "e3": {
+          "identical": true,
+          "lines": 7
+        },
+        "e4": {
+          "identical": true,
+          "lines": 7
+        }
+      },
+      "pass": true
+    },
+    "teacher_e2": {
+      "baseline": {
+        "clears": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0
+        },
+        "episodes": 16,
+        "episodes_truncated": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0
+        },
+        "mean_alive_frames": {
+          "identical": true,
+          "original": 1659.875,
+          "rebuilt": 1659.875
+        },
+        "mean_bombs": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0.0
+        },
+        "mean_boss_damage": {
+          "identical": true,
+          "original": 562.670166015625,
+          "rebuilt": 562.670166015625
+        },
+        "mean_deaths": {
+          "identical": true,
+          "original": 3,
+          "rebuilt": 3.0
+        },
+        "mean_graze": {
+          "identical": true,
+          "original": 31.4375,
+          "rebuilt": 31.4375
+        },
+        "special_activations": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0
+        }
+      },
+      "candidate": {
+        "clears": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0
+        },
+        "episodes": 16,
+        "episodes_truncated": {
+          "identical": true,
+          "original": 2,
+          "rebuilt": 2
+        },
+        "mean_alive_frames": {
+          "identical": true,
+          "original": 7598.1875,
+          "rebuilt": 7598.1875
+        },
+        "mean_bombs": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0.0
+        },
+        "mean_boss_damage": {
+          "identical": true,
+          "original": 40242.509033203125,
+          "rebuilt": 40242.509033203125
+        },
+        "mean_deaths": {
+          "identical": true,
+          "original": 2.875,
+          "rebuilt": 2.875
+        },
+        "mean_graze": {
+          "identical": true,
+          "original": 54.3125,
+          "rebuilt": 54.3125
+        },
+        "special_activations": {
+          "identical": true,
+          "original": 0,
+          "rebuilt": 0
+        }
+      },
+      "pass": true
+    },
+    "teacher_e4": {
+      "episodes": 16,
+      "field_mismatches": [],
+      "fields_compared": [
+        "alive_frames",
+        "bomb_attempts",
+        "bomb_uses_confirmed",
+        "bombs_used",
+        "boss_damage",
+        "cleared",
+        "deaths",
+        "frames",
+        "graze",
+        "logical_frame",
+        "point_item_value",
+        "reward",
+        "score",
+        "seed",
+        "skill_events",
+        "special_activations",
+        "special_attempts",
+        "surge_active_frames",
+        "terminated",
+        "truncated",
+        "won"
+      ],
+      "mean_alive_frames": {
+        "original": 7252.1875,
+        "rebuilt": 7252.1875
+      },
+      "n_field_mismatches": 0,
+      "pass": true
+    }
+  },
+  "digest_compared": false,
+  "library_sha256": "454fda98341f26c47bd8680cffe63db13a4e7e6459c9eb814306494e5f03f1ad",
+  "pass": true,
+  "patch_sha256": "15c5defc44e7c59e5b789d5aadd71a43301749d5aee462e253396fa10a4e209a",
+  "reference": "escrow_e3_e4_20261026_v1 (original taisei-sim 789200ff; runs 40219788151, 40220975924)",
+  "schema": "rebuilt_sim_validation_v1",
+  "sealed_final_seeds_used": 0,
+  "upstream_commit": "5668c41b41f7227d21fc80cf56997d4d30356ce7"
+}

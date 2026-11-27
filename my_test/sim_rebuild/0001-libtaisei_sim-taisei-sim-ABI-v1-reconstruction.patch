@@ -1,0 +1,1785 @@
+From 103517edd18ccc2a4899524225e818fc83d34ca9 Mon Sep 17 00:00:00 2001
+From: taisei-sim rebuild <noreply@anthropic.com>
+Date: Fri, 27 Nov 2026 15:58:07 +0800
+Subject: [PATCH] libtaisei_sim: headless externally-stepped simulation library
+ (taisei-sim ABI v1 reconstruction)
+
+Reconstructs the taisei-sim ABI v1 consumed by touhou_Taisei_rl
+(my_test/native_rl/taisei_ffi.py) on top of public Taisei.
+
+- src/sim: libtaisei_sim.so (init/create/reset/step/get_state/save_replay)
+- src/sim_hooks.{c,h}: inert unless enabled by libtaisei_sim (virtual keyboard,
+  seed override, no game-over menu, instant dialogue waits)
+- main.c: TAISEI_SIM_SKIP_DIALOG_WAITS=1 lets the executable verify sim replays
+---
+ meson_options.txt    |    7 +
+ src/dialog.c         |    5 +
+ src/global.c         |    5 +
+ src/main.c           |    2 +
+ src/meson.build      |    5 +
+ src/sim/meson.build  |   10 +
+ src/sim/taisei_sim.c | 1213 ++++++++++++++++++++++++++++++++++++++++++
+ src/sim/taisei_sim.h |  256 +++++++++
+ src/sim_hooks.c      |    8 +
+ src/sim_hooks.h      |   53 ++
+ src/stage.c          |   37 ++
+ 11 files changed, 1601 insertions(+)
+ create mode 100644 src/sim/meson.build
+ create mode 100644 src/sim/taisei_sim.c
+ create mode 100644 src/sim/taisei_sim.h
+ create mode 100644 src/sim_hooks.c
+ create mode 100644 src/sim_hooks.h
+
+diff --git a/meson_options.txt b/meson_options.txt
+index 1fcc0aa2..3d5ce725 100644
+--- a/meson_options.txt
++++ b/meson_options.txt
+@@ -233,3 +233,10 @@ option(
+     type : 'feature',
+     description : 'Build various test programs'
+ )
++
++option(
++    'sim',
++    type : 'boolean',
++    value : true,
++    description : 'Build libtaisei_sim, the headless simulation library used for RL (taisei-sim reconstruction)'
++)
+diff --git a/src/dialog.c b/src/dialog.c
+index 6c011634..b864984a 100644
+--- a/src/dialog.c
++++ b/src/dialog.c
+@@ -7,6 +7,7 @@
+  */
+ 
+ #include "dialog.h"
++#include "sim_hooks.h"
+ 
+ #include "global.h"
+ #include "i18n/i18n.h"
+@@ -127,6 +128,10 @@ void dialog_update(Dialog *d) {
+ }
+ 
+ void dialog_skippable_wait(Dialog *d, int timeout) {
++	if(taisei_sim_hooks.skip_dialog_waits) {
++		return;
++	}
++
+ 	CoEventSnapshot snap = coevent_snapshot(&d->events.skip_requested);
+ 
+ 	assert(d->state == DIALOG_STATE_IDLE);
+diff --git a/src/global.c b/src/global.c
+index e9daae7b..6c12ac3d 100644
+--- a/src/global.c
++++ b/src/global.c
+@@ -11,6 +11,7 @@
+ #include "taskmanager.h"
+ #include "util/env.h"
+ #include "gamepad.h"
++#include "sim_hooks.h"
+ 
+ Global global;
+ 
+@@ -46,6 +47,10 @@ void init_global(CLIAction *cli) {
+ // ALWAYS use this instead of SDL_GetKeyState if you need it.
+ // XXX: Move this somewhere?
+ bool gamekeypressed(KeyIndex key) {
++	if(taisei_sim_hooks.active && taisei_sim_hooks.key_held) {
++		return taisei_sim_hooks.key_held(key);
++	}
++
+ 	return SDL_GetKeyboardState(NULL)[config_get_int(KEYIDX_TO_CFGIDX(key))] || gamepad_game_key_pressed(key);
+ }
+ 
+diff --git a/src/main.c b/src/main.c
+index 69e72701..086fdef8 100644
+--- a/src/main.c
++++ b/src/main.c
+@@ -28,6 +28,7 @@
+ #include "replay/demoplayer.h"
+ #include "replay/struct.h"
+ #include "replay/tsrtool.h"
++#include "sim_hooks.h"
+ #include "rwops/rwops_stdiofp.h"
+ #include "stage.h"
+ #include "stageobjects.h"
+@@ -403,6 +404,7 @@ static void main_post_vfsinit(CallChainResult ccr) {
+ 	gamemode_init();
+ 	time_init();
+ 	init_global(&ctx->cli);
++	taisei_sim_hooks.skip_dialog_waits = env_get("TAISEI_SIM_SKIP_DIALOG_WAITS", false);
+ 	events_init();
+ 
+ 	if(global.is_kiosk_mode) {
+diff --git a/src/meson.build b/src/meson.build
+index b1b463ad..efee8d29 100644
+--- a/src/meson.build
++++ b/src/meson.build
+@@ -58,6 +58,7 @@ taisei_src = files(
+     'aniplayer.c',
+     'boss.c',
+     'cli.c',
++    'sim_hooks.c',
+     'color.c',
+     'color.c',
+     'common_tasks.c',
+@@ -488,6 +489,10 @@ else
+         link_args : taisei_link_args,
+     )
+ 
++    if get_option('sim')
++        subdir('sim')
++    endif
++
+     if host_machine.system() == 'darwin'
+         have_debug_syms_target = true
+         debug_symbols_file = '@0@.dwarf'.format(taisei_basename)
+diff --git a/src/sim/meson.build b/src/sim/meson.build
+new file mode 100644
+index 00000000..f579e87f
+--- /dev/null
++++ b/src/sim/meson.build
+@@ -0,0 +1,10 @@
++# libtaisei_sim: headless, externally-stepped Taisei (taisei-sim ABI v1 reconstruction)
++
++taisei_sim_lib = shared_library('taisei_sim',
++    files('taisei_sim.c'),
++    dependencies : libtaisei_dep.as_link_whole(),
++    gnu_symbol_visibility : 'hidden',
++    c_args : ['-DTAISEI_SIM_BUILDING'],
++    link_args : taisei_link_args,
++    install : true,
++)
+diff --git a/src/sim/taisei_sim.c b/src/sim/taisei_sim.c
+new file mode 100644
+index 00000000..0b94effb
+--- /dev/null
++++ b/src/sim/taisei_sim.c
+@@ -0,0 +1,1213 @@
++/*
++ * This software is licensed under the terms of the MIT License.
++ * See COPYING for further information.
++ * ---
++ * libtaisei_sim — headless, externally stepped Taisei (taisei-sim ABI v1 reconstruction).
++ *
++ * Design:
++ *   - Initialization replicates main.c's headless (--verify-replay) path: null renderer,
++ *     null audio, dummy SDL video, no menus.
++ *   - An episode is a single stage entered exactly like `taisei --stage` (main_singlestg),
++ *     with the RNG seed supplied by the caller instead of makeseed().
++ *   - Input comes from a virtual keyboard (sim_hooks.h): press/release edges go through the
++ *     game's own gameplay input handler and gamekeypressed() reports the virtual key state,
++ *     so dialogs, the score screen, auto-surge, shot inversion etc. behave as with a real
++ *     keyboard. Every input is recorded into the output replay by the game itself.
++ *   - taisei_sim_step() runs N logic frames of the stage event loop; rendering never runs
++ *     (same as replay verification).
++ *   - Game over does not open the game-over menu; the episode ends with STATUS_LOST.
++ */
++
++#include "taisei.h"
++
++#include "taisei_sim.h"
++
++#include "audio/audio.h"
++#include "boss.h"
++#include "config.h"
++#include "coroutine/coroutine.h"
++#include "dialog.h"
++#include "dynstage.h"
++#include "enemy.h"
++#include "eventloop/eventloop.h"
++#include "eventloop/eventloop_private.h"
++#include "events.h"
++#include "filewatch/filewatch.h"
++#include "gamepad.h"
++#include "global.h"
++#include "i18n/i18n.h"
++#include "item.h"
++#include "lasers/internal.h"
++#include "lasers/laser.h"
++#include "log.h"
++#include "player.h"
++#include "plrmodes.h"
++#include "progress.h"
++#include "projectile.h"
++#include "renderer/api.h"
++#include "renderer/common/models.h"
++#include "renderer/common/sprite_batch.h"
++#include "replay/replay.h"
++#include "replay/stage.h"
++#include "replay/state.h"
++#include "replay/struct.h"
++#include "resource/resource.h"
++#include "rwops/rwops_stdiofp.h"
++#include "sim_hooks.h"
++#include "stage.h"
++#include "stageinfo.h"
++#include "stageobjects.h"
++#include "taskmanager.h"
++#include "thread.h"
++#include "util/env.h"
++#include "vfs/setup.h"
++#include "video.h"
++
++#include <locale.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++/* ---------------------------------------------------------------------------------------- */
++/* ABI self-checks                                                                          */
++/* ---------------------------------------------------------------------------------------- */
++
++#define SIZEOF_FN(name, type) TAISEI_SIM_API size_t taisei_sim_sizeof_##name(void) { return sizeof(type); }
++SIZEOF_FN(vec2, TaiseiSimVec2)
++SIZEOF_FN(global_config, TaiseiSimGlobalConfig)
++SIZEOF_FN(config, TaiseiSimConfig)
++SIZEOF_FN(episode_config, TaiseiSimEpisodeConfig)
++SIZEOF_FN(action, TaiseiSimAction)
++SIZEOF_FN(state, TaiseiSimState)
++SIZEOF_FN(state_buffers, TaiseiSimStateBuffers)
++SIZEOF_FN(player_state, TaiseiSimPlayerState)
++SIZEOF_FN(boss_state, TaiseiSimBossState)
++SIZEOF_FN(projectile_state, TaiseiSimProjectileState)
++SIZEOF_FN(enemy_state, TaiseiSimEnemyState)
++SIZEOF_FN(item_state, TaiseiSimItemState)
++SIZEOF_FN(laser_state, TaiseiSimLaserState)
++SIZEOF_FN(laser_point, TaiseiSimLaserPoint)
++
++static_assert(sizeof(TaiseiSimVec2) == 16, "Vec2 ABI");
++static_assert(sizeof(TaiseiSimAction) == 8, "Action ABI");
++
++TAISEI_SIM_API uint32_t taisei_sim_api_version(void) {
++	return TAISEI_SIM_API_VERSION;
++}
++
++/* ---------------------------------------------------------------------------------------- */
++/* State                                                                                    */
++/* ---------------------------------------------------------------------------------------- */
++
++#define SIM_ERRBUF_SIZE 512
++
++// After the game-over trigger, the original taisei-sim kept the episode RUNNING for 14 more
++// steps with the game frozen (the game-over menu pauses the stage) and reported LOST on the
++// 15th. Calibrated against the archived E3 native teacher trajectory (seed 48030, step 7841).
++#define SIM_GAMEOVER_FREEZE_FRAMES 15
++
++typedef struct SimArrays {
++	TaiseiSimProjectileState *projectiles; uint32_t num_projectiles, cap_projectiles;
++	TaiseiSimEnemyState *enemies;          uint32_t num_enemies, cap_enemies;
++	TaiseiSimItemState *items;             uint32_t num_items, cap_items;
++	TaiseiSimLaserState *lasers;           uint32_t num_lasers, cap_lasers;
++	TaiseiSimLaserPoint *laser_points;     uint32_t num_laser_points, cap_laser_points;
++} SimArrays;
++
++struct TaiseiSim {
++	TaiseiSimConfig config;
++	TaiseiSimEpisodeConfig episode;
++	StageInfo *stage;
++
++	Replay replay;
++	bool have_replay;
++
++	// episode lifecycle
++	bool episode_exists;     // reset() succeeded at least once
++	bool stage_running;      // stage event loop frame is on the stack
++	bool abort_requested;
++	bool gameover_hook_fired;
++	int gameover_freeze_left; // > 0: game frozen pending STATUS_LOST
++	int final_gameover;      // global.gameover observed when the stage loop stopped
++	uint32_t status;
++	int32_t gameover_frame;
++	uint64_t logical_frame;
++	uint64_t start_time;
++
++	// virtual keyboard
++	uint32_t buttons_requested;
++	uint32_t buttons_seen;   // as delivered to the game through edges
++
++	// derived per-step telemetry
++	cmplx prev_player_pos;
++	float boss_recent_damage;
++
++	// snapshot (frozen when the stage loop stops: entities are freed by stage_end_loop)
++	TaiseiSimState snap;
++	SimArrays arr;
++	bool snap_frozen;
++
++	char error[SIM_ERRBUF_SIZE];
++};
++
++static struct {
++	bool initialized;
++	bool vfs_ready;
++	ResourceGroup rg;
++	TaiseiSim *sim;
++	char *temp_storage;
++	char global_error[SIM_ERRBUF_SIZE];
++} simg;
++
++static int32_t sim_fail(TaiseiSim *sim, int32_t code, const char *fmt, ...) {
++	char *buf = sim ? sim->error : simg.global_error;
++	va_list ap;
++	va_start(ap, fmt);
++	vsnprintf(buf, SIM_ERRBUF_SIZE, fmt, ap);
++	va_end(ap);
++	return code;
++}
++
++TAISEI_SIM_API const char *taisei_sim_last_error(TaiseiSim *sim) {
++	if(sim && sim->error[0]) {
++		return sim->error;
++	}
++
++	return simg.global_error[0] ? simg.global_error : NULL;
++}
++
++/* ---------------------------------------------------------------------------------------- */
++/* Virtual keyboard hooks                                                                   */
++/* ---------------------------------------------------------------------------------------- */
++
++static const struct { uint32_t button; KeyIndex key; } button_map[] = {
++	{ TAISEI_SIM_BUTTON_UP,      KEY_UP },
++	{ TAISEI_SIM_BUTTON_DOWN,    KEY_DOWN },
++	{ TAISEI_SIM_BUTTON_LEFT,    KEY_LEFT },
++	{ TAISEI_SIM_BUTTON_RIGHT,   KEY_RIGHT },
++	{ TAISEI_SIM_BUTTON_FOCUS,   KEY_FOCUS },
++	{ TAISEI_SIM_BUTTON_SHOT,    KEY_SHOT },
++	{ TAISEI_SIM_BUTTON_BOMB,    KEY_BOMB },
++	{ TAISEI_SIM_BUTTON_SPECIAL, KEY_SPECIAL },
++};
++
++#define SIM_ALL_BUTTONS 0xFFu
++
++static bool hook_key_held(KeyIndex key) {
++	TaiseiSim *sim = simg.sim;
++
++	if(!sim) {
++		return false;
++	}
++
++	for(int i = 0; i < ARRAY_SIZE(button_map); ++i) {
++		if(button_map[i].key == key) {
++			return sim->buttons_seen & button_map[i].button;
++		}
++	}
++
++	return false;
++}
++
++static int hook_key_edges(int max, TaiseiSimKeyEdge edges[]) {
++	TaiseiSim *sim = simg.sim;
++
++	if(!sim) {
++		return 0;
++	}
++
++	uint32_t want = sim->buttons_requested & SIM_ALL_BUTTONS;
++	uint32_t have = sim->buttons_seen;
++	int n = 0;
++
++	// releases first, then presses; both in fixed key order (deterministic)
++	for(int pass = 0; pass < 2; ++pass) {
++		for(int i = 0; i < ARRAY_SIZE(button_map) && n < max; ++i) {
++			uint32_t b = button_map[i].button;
++			bool was = have & b, is = want & b;
++
++			if(pass == 0 && was && !is) {
++				edges[n++] = (TaiseiSimKeyEdge) { .key = button_map[i].key, .down = false };
++			} else if(pass == 1 && !was && is) {
++				edges[n++] = (TaiseiSimKeyEdge) { .key = button_map[i].key, .down = true };
++			}
++		}
++	}
++
++	sim->buttons_seen = want;
++	return n;
++}
++
++static void hook_on_stage_start(void) {
++	TaiseiSim *sim = simg.sim;
++
++	if(!sim) {
++		return;
++	}
++
++	const TaiseiSimEpisodeConfig *e = &sim->episode;
++	Player *plr = &global.plr;
++
++	#define OVERRIDE_I32(field, target, lo, hi) \
++		if(e->field != TAISEI_SIM_DEFAULT_I32) { target = clamp(e->field, lo, hi); }
++
++	OVERRIDE_I32(initial_lives, plr->lives, 0, PLR_MAX_LIVES);
++	OVERRIDE_I32(initial_bombs, plr->bombs, 0, PLR_MAX_BOMBS);
++	OVERRIDE_I32(initial_life_fragments, plr->life_fragments, 0, PLR_MAX_LIFE_FRAGMENTS - 1);
++	OVERRIDE_I32(initial_bomb_fragments, plr->bomb_fragments, 0, PLR_MAX_BOMB_FRAGMENTS - 1);
++	OVERRIDE_I32(initial_power, plr->power_stored, 0, PLR_MAX_POWER_STORED);
++	if(e->initial_point_item_value != TAISEI_SIM_DEFAULT_I32 && e->initial_point_item_value > 0) {
++		plr->point_item_value = e->initial_point_item_value;
++	}
++	#undef OVERRIDE_I32
++
++	if(e->initial_score && e->initial_score != TAISEI_SIM_DEFAULT_U64) {
++		plr->points = e->initial_score;
++	}
++
++	if(e->initial_graze) {
++		plr->graze = e->initial_graze;
++	}
++
++	// The visual RNG never influences gameplay, but seed it too so the process is reproducible.
++	rng_seed(&global.rand_visual, e->rng_seed ^ UINT64_C(0x9E3779B97F4A7C15));
++}
++
++static void hook_on_gameover(void) {
++	TaiseiSim *sim = simg.sim;
++
++	if(sim) {
++		sim->gameover_hook_fired = true;
++		sim->gameover_frame = global.frames;
++		sim->gameover_freeze_left = SIM_GAMEOVER_FREEZE_FRAMES;
++		// the remainder of this logic frame still runs, then the stage is frozen
++	} else {
++		global.gameover = GAMEOVER_DEFEAT;
++	}
++}
++
++static void sim_install_hooks(void) {
++	taisei_sim_hooks = (TaiseiSimHooks) {
++		.active = true,
++		.key_held = hook_key_held,
++		.key_edges = hook_key_edges,
++		.on_stage_start = hook_on_stage_start,
++		.on_gameover = hook_on_gameover,
++		.skip_dialog_waits = true,
++	};
++}
++
++/* ---------------------------------------------------------------------------------------- */
++/* Global init / shutdown (mirrors main.c, headless path)                                   */
++/* ---------------------------------------------------------------------------------------- */
++
++static void sim_vfs_ready(CallChainResult ccr) {
++	simg.vfs_ready = true;
++}
++
++static char *sim_make_temp_storage(void) {
++	const char *tmp = env_get_string_nonempty("TMPDIR", "/tmp");
++	size_t len = strlen(tmp) + 32;
++	char *path = malloc(len);
++	snprintf(path, len, "%s/taisei-sim-XXXXXX", tmp);
++
++	if(!mkdtemp(path)) {
++		free(path);
++		return NULL;
++	}
++
++	return path;
++}
++
++TAISEI_SIM_API int32_t taisei_sim_global_init(const TaiseiSimGlobalConfig *cfg) {
++	if(simg.initialized) {
++		return sim_fail(NULL, TAISEI_SIM_E_ALREADY_INITIALIZED, "already initialized");
++	}
++
++	if(!cfg) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "config is NULL");
++	}
++
++	if(cfg->struct_size != sizeof(*cfg)) {
++		return sim_fail(NULL, TAISEI_SIM_E_BAD_STRUCT_SIZE, "global config struct_size %u != %zu",
++			cfg->struct_size, sizeof(*cfg));
++	}
++
++	if(cfg->api_version != TAISEI_SIM_API_VERSION) {
++		return sim_fail(NULL, TAISEI_SIM_E_API_VERSION, "api_version %u != %u",
++			cfg->api_version, TAISEI_SIM_API_VERSION);
++	}
++
++	// Must precede any SDL allocation (env_set allocates through SDL): every SDL allocation
++	// has to come from the same allocator that will later free it.
++	setlocale(LC_ALL, "C");
++	mem_install_sdl_callbacks();
++
++	if(cfg->resource_path) {
++		env_set("TAISEI_RES_PATH", cfg->resource_path, true);
++	}
++
++	if(cfg->storage_path) {
++		env_set("TAISEI_STORAGE_PATH", cfg->storage_path, true);
++	} else {
++		simg.temp_storage = sim_make_temp_storage();
++
++		if(!simg.temp_storage) {
++			return sim_fail(NULL, TAISEI_SIM_E_IO, "could not create temporary storage directory");
++		}
++
++		env_set("TAISEI_STORAGE_PATH", simg.temp_storage, true);
++	}
++
++	if(cfg->cache_path) {
++		env_set("TAISEI_CACHE_PATH", cfg->cache_path, true);
++	}
++
++	env_set("SDL_AUDIODRIVER", "dummy", true);
++	env_set("SDL_VIDEODRIVER", "dummy", true);
++	env_set("TAISEI_AUDIO_BACKEND", "null", true);
++	env_set("TAISEI_RENDERER", "null", true);
++
++	thread_init();
++	coroutines_init();
++
++	LogLevel lvls = log_parse_levels(LOG_ALERT, env_get("TAISEI_SIM_LOGLVLS", ""));
++	log_init(LOG_DEFAULT_LEVELS);
++	log_add_output(lvls, SDL_RWFromFP(stderr, false), log_formatter_console);
++
++	stageinfo_init();
++
++	vfs_setup(CALLCHAIN(sim_vfs_ready, NULL));
++
++	if(!simg.vfs_ready) {
++		return sim_fail(NULL, TAISEI_SIM_E_INTERNAL, "VFS setup did not complete synchronously");
++	}
++
++	config_load();
++
++	if(!SDL_Init(SDL_INIT_EVENTS)) {
++		return sim_fail(NULL, TAISEI_SIM_E_INTERNAL, "SDL_Init failed: %s", SDL_GetError());
++	}
++
++	taskmgr_global_init();
++	time_init();
++	init_global(&(CLIAction) { .type = CLI_VerifyReplay });
++	events_init();
++	video_init(&(VideoInitParams) { 0 });
++	filewatch_init();
++	res_init();
++	r_models_init();
++	r_sprite_batch_init();
++	r_post_init();
++	res_group_init(&simg.rg);
++	i18n_init();
++	dynstage_init_monitoring();
++	audio_init();
++	res_post_init();
++	gamepad_init();
++	progress_load();
++	progress_unlock_all();  // every stage/spell selectable, like --unlock-all
++	video_post_init();
++
++	sim_install_hooks();
++	simg.initialized = true;
++	simg.global_error[0] = 0;
++	log_info("taisei_sim: initialization complete");
++	return TAISEI_SIM_OK;
++}
++
++static int32_t sim_end_stage(TaiseiSim *sim);
++
++TAISEI_SIM_API int32_t taisei_sim_global_shutdown(void) {
++	if(!simg.initialized) {
++		return sim_fail(NULL, TAISEI_SIM_E_NOT_INITIALIZED, "not initialized");
++	}
++
++	if(simg.sim) {
++		taisei_sim_destroy(simg.sim);
++	}
++
++	taisei_sim_hooks = (TaiseiSimHooks) {};
++
++	// Subset of taisei_shutdown(); persistent data is intentionally not committed.
++	i18n_shutdown();
++	r_release_resources();
++	res_group_release(&simg.rg);
++	res_shutdown();
++	progress_unload();
++	stage_objpools_shutdown();
++	taskmgr_global_shutdown();
++	audio_shutdown();
++	r_models_shutdown();
++	r_sprite_batch_shutdown();
++	video_shutdown();
++	gamepad_shutdown();
++	stageinfo_shutdown();
++	config_shutdown();
++	filewatch_shutdown();
++	vfs_shutdown();
++	events_shutdown();
++	time_shutdown();
++	coroutines_shutdown();
++	log_queue_shutdown();
++	thread_shutdown();
++	log_shutdown();
++	SDL_Quit();
++
++	free(simg.temp_storage);
++	simg = (typeof(simg)) {};
++	return TAISEI_SIM_OK;
++}
++
++/* ---------------------------------------------------------------------------------------- */
++/* Create / destroy                                                                         */
++/* ---------------------------------------------------------------------------------------- */
++
++TAISEI_SIM_API int32_t taisei_sim_create(const TaiseiSimConfig *config, TaiseiSim **out_sim) {
++	if(!simg.initialized) {
++		return sim_fail(NULL, TAISEI_SIM_E_NOT_INITIALIZED, "taisei_sim_global_init() not called");
++	}
++
++	if(!config || !out_sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "NULL argument");
++	}
++
++	if(config->struct_size != sizeof(*config)) {
++		return sim_fail(NULL, TAISEI_SIM_E_BAD_STRUCT_SIZE, "config struct_size %u != %zu",
++			config->struct_size, sizeof(*config));
++	}
++
++	if(simg.sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_BUSY, "only one simulation per process is supported");
++	}
++
++	TaiseiSim *sim = calloc(1, sizeof(*sim));
++	sim->config = *config;
++	sim->status = TAISEI_SIM_STATUS_NONE;
++	simg.sim = sim;
++	*out_sim = sim;
++	return TAISEI_SIM_OK;
++}
++
++static void free_arrays(SimArrays *a) {
++	free(a->projectiles);
++	free(a->enemies);
++	free(a->items);
++	free(a->lasers);
++	free(a->laser_points);
++	*a = (SimArrays) {};
++}
++
++TAISEI_SIM_API int32_t taisei_sim_destroy(TaiseiSim *sim) {
++	if(!sim || sim != simg.sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "invalid handle");
++	}
++
++	if(sim->stage_running) {
++		sim_end_stage(sim);
++	}
++
++	if(sim->have_replay) {
++		replay_state_deinit(&global.replay.output);
++		replay_reset(&sim->replay);
++	}
++
++	free_arrays(&sim->arr);
++	free(sim);
++	simg.sim = NULL;
++	return TAISEI_SIM_OK;
++}
++
++/* ---------------------------------------------------------------------------------------- */
++/* Snapshot                                                                                 */
++/* ---------------------------------------------------------------------------------------- */
++
++#define ARR_PUSH(a, name) ( \
++	((a)->num_##name >= (a)->cap_##name ? ( \
++		(a)->cap_##name = max(16u, (a)->cap_##name * 2), \
++		(a)->name = realloc((a)->name, sizeof(*(a)->name) * (a)->cap_##name)) : 0), \
++	memset(&(a)->name[(a)->num_##name], 0, sizeof(*(a)->name)), \
++	&(a)->name[(a)->num_##name++])
++
++static inline TaiseiSimVec2 v2(cmplx c) {
++	return (TaiseiSimVec2) { re(c), im(c) };
++}
++
++static inline int32_t remaining(int t) {
++	return t > global.frames ? t - global.frames : 0;
++}
++
++static void digest_mix(uint64_t *h, const void *data, size_t size) {
++	const uint8_t *p = data;
++
++	for(size_t i = 0; i < size; ++i) {
++		*h ^= p[i];
++		*h *= UINT64_C(0x100000001b3);
++	}
++}
++
++#define DIGEST(h, v) do { typeof(v) _v = (v); digest_mix((h), &_v, sizeof(_v)); } while(0)
++
++static void snapshot_player(TaiseiSim *sim, TaiseiSimPlayerState *ps) {
++	Player *plr = &global.plr;
++
++	ps->position = v2(plr->pos);
++	ps->previous_position = v2(sim->prev_player_pos);
++	ps->velocity = v2(plr->velocity);
++	ps->input_flags = plr->inputflags;
++	ps->focused = (plr->inputflags & INFLAG_FOCUS) != 0;
++	ps->shooting = player_should_shoot(plr);
++	ps->lives = plr->lives;
++	ps->bombs = plr->bombs;
++	ps->life_fragments = plr->life_fragments;
++	ps->bomb_fragments = plr->bomb_fragments;
++	ps->stored_power = plr->power_stored;
++	ps->effective_power = player_get_effective_power(plr);
++	ps->point_item_value = plr->point_item_value;
++	ps->score = plr->points;
++	ps->graze = plr->graze;
++	ps->voltage = plr->voltage;
++	ps->alive = player_is_alive(plr);
++	ps->invulnerable = !player_is_vulnerable(plr);
++	ps->recovering = player_is_recovering(plr);
++	ps->death_timer = plr->deathtime >= global.frames ? plr->deathtime - global.frames : 0;
++	ps->respawn_timer = remaining(plr->respawntime);
++	ps->recovery_timer = remaining(plr->recoverytime);
++	ps->bomb_active = player_is_bomb_active(plr);
++	ps->bomb_progress = player_get_bomb_progress(plr);
++	ps->bomb_trigger_frame = plr->bomb_triggertime;
++	ps->bomb_end_frame = plr->bomb_endtime;
++	ps->power_surge_active = player_is_powersurge_active(plr);
++	ps->power_surge_positive = plr->powersurge.positive;
++	ps->power_surge_negative = plr->powersurge.negative;
++
++	if(plr->mode) {
++		ps->player_character = plr->mode->character->id;
++		ps->shot_mode = plr->mode->shot_mode;
++	}
++}
++
++static void snapshot_boss(TaiseiSim *sim, TaiseiSimBossState *bs) {
++	Boss *boss = global.boss;
++	bs->recent_damage = sim->boss_recent_damage;
++	bs->phase_index = -1;
++
++	if(!boss) {
++		return;
++	}
++
++	bs->active = 1;
++	bs->position = v2(boss->pos);
++	bs->velocity = v2(boss->move.velocity);
++	bs->invulnerable = !boss_is_vulnerable(boss);
++
++	Attack *a = boss->current;
++
++	if(a && a >= boss->attacks && a < boss->attacks + boss->acount) {
++		int idx = a - boss->attacks;
++		bs->hp = a->hp;
++		bs->max_hp = a->maxhp;
++		bs->phase_index = idx;
++		bs->phase_type = (uint32_t)a->type + 1;  // 0 = no attack; matches original taisei-sim
++		bs->attack_id = idx;
++		bs->spell_id = (a->info && global.diff >= D_Easy && global.diff <= D_Lunatic)
++			? (uint16_t)(int16_t)a->info->idmap[global.diff - D_Easy] : UINT16_MAX;
++		bs->spell_active = ATTACK_IS_SPELL(a->type) && attack_is_active(a);
++		bs->phase_start_frame = a->starttime;
++		bs->phase_end_frame = a->endtime;
++		bs->phase_timeout_frames = a->timeout;
++		bs->remaining_timeout_frames = remaining(a->starttime + a->timeout);  // includes start delay
++		bs->spell_failed_frame = a->failtime;
++		bs->spell_failed = attack_was_failed(a);
++		bs->spell_captured = ATTACK_IS_SPELL(a->type) && attack_has_finished(a) && !attack_was_failed(a);
++	}
++}
++
++static void snapshot_laser_points(TaiseiSim *sim, Laser *l, TaiseiSimLaserState *ls) {
++	SimArrays *arr = &sim->arr;
++	ls->first_point = arr->num_laser_points;
++
++	int ofs = l->_internal.segments_ofs;
++	int nsegs = l->_internal.num_segments;
++
++	if(nsegs < 1 || ofs < 0 || ofs + nsegs > (int)lintern.segments.num_elements) {
++		ls->point_count = 0;
++		return;
++	}
++
++	if(sim->config.laser_sample_step > 0) {
++		// resample the collision geometry at a fixed arc-length step (approximation:
++		// half_width is interpolated from the segment endpoints)
++		real step = sim->config.laser_sample_step;
++
++		for(int i = 0; i < nsegs; ++i) {
++			LaserSegment *s = dynarray_get_ptr(&lintern.segments, ofs + i);
++			cmplx a = s->pos.a, b = s->pos.b;
++			real len = cabs(b - a);
++			int n = max(1, (int)ceil(len / step));
++
++			for(int k = (i == 0 ? 0 : 1); k <= n; ++k) {
++				real f = (real)k / n;
++				TaiseiSimLaserPoint *p = ARR_PUSH(arr, laser_points);
++				p->position = v2(clerp(a, b, f));
++				p->half_width = 0.5f * lerpf(s->width.a, s->width.b, f);
++				p->time = lerpf(s->time.a, s->time.b, f);
++			}
++		}
++	} else {
++		// export the quantized collision segments (the exact geometry used by laser_collision)
++		cmplx prev_end = INFINITY;
++
++		for(int i = 0; i < nsegs; ++i) {
++			LaserSegment s = dynarray_get(&lintern.segments, ofs + i);
++
++			if(prev_end != s.pos.a && prev_end == s.pos.b) {
++				// segment stored flipped (see quantize_laser)
++				s = (LaserSegment) {
++					.pos = { s.pos.b, s.pos.a },
++					.width = { s.width.b, s.width.a },
++					.time = { s.time.b, s.time.a },
++				};
++			}
++
++			if(prev_end != s.pos.a) {
++				TaiseiSimLaserPoint *p = ARR_PUSH(arr, laser_points);
++				p->position = v2(s.pos.a);
++				p->half_width = 0.5f * s.width.a;
++				p->time = s.time.a;
++				p->flags = TAISEI_SIM_LASER_POINT_SEGMENT_START |
++					(i > 0 ? TAISEI_SIM_LASER_POINT_DISCONTINUITY : 0);
++			}
++
++			TaiseiSimLaserPoint *p = ARR_PUSH(arr, laser_points);
++			p->position = v2(s.pos.b);
++			p->half_width = 0.5f * s.width.b;
++			p->time = s.time.b;
++			p->flags = TAISEI_SIM_LASER_POINT_SEGMENT_END;
++			prev_end = s.pos.b;
++		}
++	}
++
++	ls->point_count = arr->num_laser_points - ls->first_point;
++}
++
++static void build_snapshot(TaiseiSim *sim) {
++	TaiseiSimState *st = &sim->snap;
++	SimArrays *arr = &sim->arr;
++	uint64_t h = UINT64_C(0xcbf29ce484222325);
++
++	*st = (TaiseiSimState) {
++		.struct_size = sizeof(TaiseiSimState),
++		.api_version = TAISEI_SIM_API_VERSION,
++		.stage_id = sim->episode.stage_id,
++		.stage_type = sim->stage ? sim->stage->type : 0,
++		.difficulty = global.diff,
++		.player_character = sim->episode.player_character,
++		.shot_mode = sim->episode.shot_mode,
++		.practice_mode = sim->episode.practice_mode,
++		.logical_frame = sim->logical_frame,
++		.initial_rng_seed = sim->episode.rng_seed,
++		.start_time = sim->start_time,
++		.episode_status = sim->status,
++		.gameover_frame = sim->gameover_frame,
++	};
++
++	arr->num_projectiles = arr->num_enemies = arr->num_items = 0;
++	arr->num_lasers = arr->num_laser_points = 0;
++
++	if(!sim->stage_running) {
++		return;
++	}
++
++	Player *plr = &global.plr;
++	st->stage_clear = stage_is_cleared() || sim->status == TAISEI_SIM_STATUS_WON;
++	st->game_over = sim->status == TAISEI_SIM_STATUS_LOST;
++	st->score = plr->points;
++	st->graze = plr->graze;
++	st->voltage = plr->voltage;
++	st->deaths = plr->stats.total.lives_used;
++	st->bombs_used = plr->stats.total.bombs_used;
++	st->continues_used = plr->stats.total.continues_used;
++	snapshot_player(sim, &st->player);
++	snapshot_boss(sim, &st->boss);
++
++	DIGEST(&h, global.frames);
++	digest_mix(&h, global.rand_game.state, sizeof(global.rand_game.state));
++	DIGEST(&h, plr->pos);
++	DIGEST(&h, plr->lives);
++	DIGEST(&h, plr->bombs);
++	DIGEST(&h, plr->power_stored);
++	DIGEST(&h, plr->points);
++	DIGEST(&h, plr->graze);
++	DIGEST(&h, plr->voltage);
++	DIGEST(&h, plr->inputflags);
++
++	for(Projectile *p = global.projs.first; p; p = p->next) {
++		TaiseiSimProjectileState *ps = ARR_PUSH(arr, projectiles);
++		ps->spawn_id = p->ent.spawn_id;
++		ps->category = p->type;
++		ps->position = v2(p->pos);
++		ps->previous_position = v2(p->prevpos);
++		ps->velocity = v2(p->move.velocity);
++		ps->collision_size = v2(p->collision_size);
++		ps->damage = p->damage;
++		ps->angle = p->angle;
++		ps->age_frames = global.frames - p->birthtime;
++		ps->flags = p->flags;
++		ps->damage_type = p->damage_type;
++		ps->clear_flags = p->clear_flags;
++		DIGEST(&h, p->type);
++		DIGEST(&h, p->pos);
++	}
++
++	for(Enemy *e = global.enemies.first; e; e = e->next) {
++		TaiseiSimEnemyState *es = ARR_PUSH(arr, enemies);
++		es->spawn_id = e->ent.spawn_id;
++		es->position = v2(e->pos);
++		es->velocity = v2(e->move.velocity);
++		es->hp = e->hp;
++		es->max_hp = e->spawn_hp;
++		es->hit_radius = e->hit_radius;
++		es->hurt_radius = e->hurt_radius;
++		es->age_frames = global.frames - e->birthtime;
++		es->flags = e->flags;
++		es->damageable = !(e->flags & (EFLAG_NO_HIT | EFLAG_INVULNERABLE | EFLAG_KILLED));
++		es->harmful = !(e->flags & (EFLAG_NO_HURT | EFLAG_KILLED));
++		DIGEST(&h, e->pos);
++		DIGEST(&h, e->hp);
++	}
++
++	for(Item *it = global.items.first; it; it = it->next) {
++		TaiseiSimItemState *is = ARR_PUSH(arr, items);
++		is->spawn_id = it->ent.spawn_id;
++		is->position = v2(it->pos);
++		is->velocity = v2(it->v);
++		is->item_type = it->type;
++		is->age_frames = global.frames - it->birthtime;
++		is->collect_frame = it->collecttime;
++		is->attracted = it->auto_collect != 0;
++		is->pickup_value = it->pickup_value;
++		DIGEST(&h, it->pos);
++	}
++
++	for(Laser *l = global.lasers.first; l; l = l->next) {
++		TaiseiSimLaserState *ls = ARR_PUSH(arr, lasers);
++		ls->spawn_id = l->ent.spawn_id;
++		ls->origin = v2(l->pos);
++		ls->age_frames = global.frames - l->birthtime;
++		ls->width = l->width;
++		ls->speed = l->speed;
++		ls->timespan = l->timespan;
++		ls->death_time = l->deathtime;
++		ls->time_shift = l->timeshift;
++		ls->collision_active = laser_is_active(l);
++		ls->unclearable = l->unclearable;
++		ls->clear_flags = l->clear_flags;
++		snapshot_laser_points(sim, l, ls);
++		DIGEST(&h, l->pos);
++		DIGEST(&h, l->width);
++	}
++
++	if(global.boss && global.boss->current) {
++		DIGEST(&h, global.boss->pos);
++		DIGEST(&h, global.boss->current->hp);
++	}
++
++	st->projectile_count = arr->num_projectiles;
++	st->enemy_count = arr->num_enemies;
++	st->item_count = arr->num_items;
++	st->laser_count = arr->num_lasers;
++	st->laser_point_count = arr->num_laser_points;
++	st->gameplay_digest = h;
++}
++
++/* ---------------------------------------------------------------------------------------- */
++/* Episode control                                                                          */
++/* ---------------------------------------------------------------------------------------- */
++
++static void sim_stage_finished(CallChainResult ccr) {
++	TaiseiSim *sim = ccr.ctx;
++	sim->stage_running = false;
++}
++
++static uint32_t status_from_gameover(TaiseiSim *sim, int gameover) {
++	if(sim->abort_requested) {
++		return TAISEI_SIM_STATUS_ABORTED;
++	}
++
++	switch(gameover) {
++		case GAMEOVER_WIN:        return TAISEI_SIM_STATUS_WON;
++		case GAMEOVER_SCORESCREEN:return TAISEI_SIM_STATUS_WON;
++		case GAMEOVER_DEFEAT:     return TAISEI_SIM_STATUS_LOST;
++		case GAMEOVER_RESTART:    return TAISEI_SIM_STATUS_ABORTED;
++		case GAMEOVER_ABORT:      return TAISEI_SIM_STATUS_ABORTED;
++		default:                  return TAISEI_SIM_STATUS_ERROR;
++	}
++}
++
++// Runs exactly one logic frame of the stage loop. Returns false once the loop has stopped.
++static bool sim_run_frame(TaiseiSim *sim);
++
++static bool sim_run_frozen_gameover_frame(TaiseiSim *sim) {
++	// The game is paused: logical time does not advance at all
++	// (archived: logical_frame == 1 + elapsed steps - 15 for lost episodes).
++	if(--sim->gameover_freeze_left > 0) {
++		return true;
++	}
++
++	// equivalent to choosing "quit" on the game-over menu with no continues left
++	sim->status = TAISEI_SIM_STATUS_LOST;
++	sim->snap.episode_status = sim->status;
++	sim->snap.logical_frame = sim->logical_frame;
++	sim->snap.game_over = 1;
++	return false;
++}
++
++static bool sim_run_frame(TaiseiSim *sim) {
++	if(sim->gameover_hook_fired && sim->status == TAISEI_SIM_STATUS_RUNNING && !sim->abort_requested) {
++		return sim_run_frozen_gameover_frame(sim);
++	}
++
++	LoopFrame *frame = evloop.stack_ptr;
++
++	if(!frame || frame->logic == NULL || frame->context == NULL) {
++		sim->status = TAISEI_SIM_STATUS_ERROR;
++		sim_fail(sim, TAISEI_SIM_E_INTERNAL, "event loop stack is empty");
++		return false;
++	}
++
++	Boss *boss_before = global.boss;
++	Attack *atk_before = boss_before ? boss_before->current : NULL;
++	float hp_before = atk_before ? atk_before->hp : 0;
++	sim->prev_player_pos = global.plr.pos;
++
++	LogicFrameAction a = run_logic_frame(frame);
++
++	if(evloop.stack_ptr != frame) {
++		// something pushed another loop frame (a menu); this must never happen in sim mode
++		sim->status = TAISEI_SIM_STATUS_ERROR;
++		sim_fail(sim, TAISEI_SIM_E_INTERNAL, "unexpected event loop frame pushed during stage logic");
++		return false;
++	}
++
++	if(global.boss && global.boss == boss_before && global.boss->current == atk_before && atk_before) {
++		float d = hp_before - atk_before->hp;
++
++		if(d > 0) {
++			sim->boss_recent_damage += d;
++		}
++	}
++
++	++sim->logical_frame;
++
++	if(a == LFRAME_STOP) {
++		sim->final_gameover = global.gameover;
++		sim->status = status_from_gameover(sim, global.gameover);
++
++		if(sim->status == TAISEI_SIM_STATUS_LOST && sim->gameover_frame < 0) {
++			sim->gameover_frame = global.frames;
++		}
++
++		build_snapshot(sim);
++		sim->snap.stage_clear = sim->status == TAISEI_SIM_STATUS_WON;
++		sim->snap.game_over = sim->status == TAISEI_SIM_STATUS_LOST;
++		sim->snap_frozen = true;
++
++		eventloop_leave();  // -> stage_end_loop -> sim_stage_finished
++		assert(!sim->stage_running);
++		sim->stage_running = false;
++		return false;
++	}
++
++	if(global.gameover == GAMEOVER_SCORESCREEN) {
++		// stage cleared: the score screen is purely cosmetic
++		sim->status = TAISEI_SIM_STATUS_WON;
++	}
++
++	if(sim->gameover_hook_fired) {
++		// freeze the observable state at the game-over frame
++		build_snapshot(sim);
++		sim->snap_frozen = true;
++	}
++
++	return true;
++}
++
++static int32_t sim_end_stage(TaiseiSim *sim) {
++	if(!sim->stage_running) {
++		return TAISEI_SIM_OK;
++	}
++
++	bool lost = sim->status == TAISEI_SIM_STATUS_LOST;
++	sim->abort_requested = !lost;
++	sim->buttons_requested = 0;
++	sim->gameover_hook_fired = false;
++
++	for(int i = 0; i < 16 && sim->stage_running; ++i) {
++		if(global.gameover <= 0) {
++			global.gameover = lost ? GAMEOVER_DEFEAT : GAMEOVER_ABORT;
++		}
++
++		if(!sim_run_frame(sim)) {
++			break;
++		}
++	}
++
++	if(sim->stage_running) {
++		return sim_fail(sim, TAISEI_SIM_E_INTERNAL, "failed to tear down the running stage");
++	}
++
++	return TAISEI_SIM_OK;
++}
++
++TAISEI_SIM_API int32_t taisei_sim_reset(TaiseiSim *sim, const TaiseiSimEpisodeConfig *episode) {
++	if(!sim || sim != simg.sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "invalid handle");
++	}
++
++	sim->error[0] = 0;
++
++	if(!episode) {
++		return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, "episode config is NULL");
++	}
++
++	if(episode->struct_size != sizeof(*episode)) {
++		return sim_fail(sim, TAISEI_SIM_E_BAD_STRUCT_SIZE, "episode config struct_size %u != %zu",
++			episode->struct_size, sizeof(*episode));
++	}
++
++	StageInfo *stg = stageinfo_get_by_id(episode->stage_id);
++
++	if(!stg) {
++		return sim_fail(sim, TAISEI_SIM_E_UNKNOWN_STAGE, "unknown stage id 0x%x", episode->stage_id);
++	}
++
++	PlayerMode *mode = plrmode_find(episode->player_character, episode->shot_mode);
++
++	if(!mode) {
++		return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, "unknown player mode %u/%u",
++			episode->player_character, episode->shot_mode);
++	}
++
++	if(episode->difficulty > D_Lunatic) {
++		return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, "invalid difficulty %u", episode->difficulty);
++	}
++
++	int32_t r = sim_end_stage(sim);
++
++	if(r != TAISEI_SIM_OK) {
++		return r;
++	}
++
++	// fresh episode state
++	sim->episode = *episode;
++	sim->stage = stg;
++	sim->abort_requested = false;
++	sim->gameover_hook_fired = false;
++	sim->gameover_freeze_left = 0;
++	sim->final_gameover = 0;
++	sim->gameover_frame = -1;
++	sim->logical_frame = 0;
++	sim->buttons_requested = 0;
++	sim->buttons_seen = 0;
++	sim->boss_recent_damage = 0;
++	sim->snap_frozen = false;
++	sim->start_time = (episode->start_time == TAISEI_SIM_DEFAULT_U64) ? 0 : episode->start_time;
++
++	taisei_sim_hooks.override_seed = true;
++	taisei_sim_hooks.seed = episode->rng_seed;
++	taisei_sim_hooks.override_start_time = true;
++	taisei_sim_hooks.start_time = sim->start_time;
++
++	// mirrors main_singlestg / main_singlestg_begin_game
++	global.diff = episode->difficulty ? episode->difficulty : (stg->difficulty ? stg->difficulty : D_Easy);
++	global.is_practice_mode = episode->practice_mode != 0;
++
++	if(sim->have_replay) {
++		replay_state_deinit(&global.replay.output);
++		replay_reset(&sim->replay);
++	}
++
++	sim->replay = (Replay) {};
++	stralloc(&sim->replay.playername, "taisei-sim");
++	replay_state_init_record(&global.replay.output, &sim->replay);
++	replay_state_deinit(&global.replay.input);
++	sim->have_replay = true;
++
++	global.gameover = 0;
++	player_init(&global.plr);
++	stats_init(&global.plr.stats);
++	global.plr.mode = mode;
++
++	sim->stage_running = true;
++	sim->status = TAISEI_SIM_STATUS_RUNNING;
++	stage_enter(stg, &simg.rg, CALLCHAIN(sim_stage_finished, sim));
++
++	if(evloop.stack_ptr == NULL) {
++		sim->stage_running = false;
++		sim->status = TAISEI_SIM_STATUS_ERROR;
++		return sim_fail(sim, TAISEI_SIM_E_INTERNAL, "stage_enter did not start the stage loop");
++	}
++
++	// Run the stage's first logic frame (stage begin proc + player post-init; the stage
++	// coroutine yields before it ever reads input). The original taisei-sim did the same:
++	// with this warm-up frame, step k of a fresh episode reproduces step k of the archived
++	// native smoke traces exactly.
++	if(!sim_run_frame(sim) || sim->status != TAISEI_SIM_STATUS_RUNNING) {
++		return sim_fail(sim, TAISEI_SIM_E_INTERNAL, "stage ended during its first frame");
++	}
++
++	// logical_frame counts executed stage logic frames, including this warm-up frame:
++	// it is 1 right after reset, as in the archived traces.
++	assert(sim->logical_frame == 1);
++	sim->boss_recent_damage = 0;
++	sim->prev_player_pos = global.plr.pos;
++	return TAISEI_SIM_OK;
++}
++
++TAISEI_SIM_API int32_t taisei_sim_step(TaiseiSim *sim, const TaiseiSimAction *action, uint32_t frames) {
++	if(!sim || sim != simg.sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "invalid handle");
++	}
++
++	if(!action) {
++		return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, "action is NULL");
++	}
++
++	if(action->struct_size != sizeof(*action)) {
++		return sim_fail(sim, TAISEI_SIM_E_BAD_STRUCT_SIZE, "action struct_size %u != %zu",
++			action->struct_size, sizeof(*action));
++	}
++
++	if(sim->status == TAISEI_SIM_STATUS_NONE) {
++		return sim_fail(sim, TAISEI_SIM_E_NO_EPISODE, "taisei_sim_reset() not called");
++	}
++
++	if(sim->status != TAISEI_SIM_STATUS_RUNNING || !sim->stage_running) {
++		return sim_fail(sim, TAISEI_SIM_E_EPISODE_OVER, "episode is over (status %u)", sim->status);
++	}
++
++	sim->buttons_requested = action->buttons & SIM_ALL_BUTTONS;
++	sim->boss_recent_damage = 0;
++
++	for(uint32_t i = 0; i < frames; ++i) {
++		if(!sim_run_frame(sim)) {
++			break;
++		}
++
++		if(sim->status != TAISEI_SIM_STATUS_RUNNING) {
++			break;
++		}
++	}
++
++	if(sim->status == TAISEI_SIM_STATUS_ERROR) {
++		return TAISEI_SIM_E_INTERNAL;
++	}
++
++	return TAISEI_SIM_OK;
++}
++
++TAISEI_SIM_API int32_t taisei_sim_get_state(TaiseiSim *sim, TaiseiSimState *state, TaiseiSimStateBuffers *buffers) {
++	if(!sim || sim != simg.sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "invalid handle");
++	}
++
++	if(!state) {
++		return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, "state is NULL");
++	}
++
++	if(state->struct_size != sizeof(*state)) {
++		return sim_fail(sim, TAISEI_SIM_E_BAD_STRUCT_SIZE, "state struct_size %u != %zu",
++			state->struct_size, sizeof(*state));
++	}
++
++	if(!sim->snap_frozen) {
++		build_snapshot(sim);
++	}
++
++	sim->snap.boss.recent_damage = sim->boss_recent_damage;
++	*state = sim->snap;
++
++	if(!buffers) {
++		return TAISEI_SIM_OK;
++	}
++
++	if(buffers->struct_size != sizeof(*buffers)) {
++		return sim_fail(sim, TAISEI_SIM_E_BAD_STRUCT_SIZE, "buffers struct_size %u != %zu",
++			buffers->struct_size, sizeof(*buffers));
++	}
++
++	SimArrays *a = &sim->arr;
++	bool too_small = false;
++
++	#define COPY_OUT(name, cap) do { \
++		if(a->num_##name > buffers->cap) { \
++			too_small = true; \
++		} else if(a->num_##name) { \
++			if(!buffers->name) { return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, #name " buffer is NULL"); } \
++			memcpy(buffers->name, a->name, sizeof(*a->name) * a->num_##name); \
++		} \
++	} while(0)
++
++	COPY_OUT(projectiles, projectile_capacity);
++	COPY_OUT(enemies, enemy_capacity);
++	COPY_OUT(items, item_capacity);
++	COPY_OUT(lasers, laser_capacity);
++	COPY_OUT(laser_points, laser_point_capacity);
++	#undef COPY_OUT
++
++	if(too_small) {
++		return sim_fail(sim, TAISEI_SIM_E_BUFFER_TOO_SMALL, "state buffers too small");
++	}
++
++	return TAISEI_SIM_OK;
++}
++
++TAISEI_SIM_API int32_t taisei_sim_save_replay(TaiseiSim *sim, const char *path) {
++	if(!sim || sim != simg.sim) {
++		return sim_fail(NULL, TAISEI_SIM_E_INVALID_ARGUMENT, "invalid handle");
++	}
++
++	if(!path) {
++		return sim_fail(sim, TAISEI_SIM_E_INVALID_ARGUMENT, "path is NULL");
++	}
++
++	if(!sim->have_replay || sim->replay.stages.num_elements < 1) {
++		return sim_fail(sim, TAISEI_SIM_E_NO_EPISODE, "no recorded episode");
++	}
++
++	SDL_IOStream *out = SDL_IOFromFile(path, "wb");
++
++	if(!out) {
++		return sim_fail(sim, TAISEI_SIM_E_IO, "cannot open %s: %s", path, SDL_GetError());
++	}
++
++	// A replay of a still-running episode gets a provisional terminator, exactly like
++	// stage_end_loop would append, and it is removed again afterwards.
++	ReplayStage *rstg = NULL;
++	bool provisional = false;
++	uint64_t saved_points = 0;
++
++	if(sim->stage_running && global.replay.output.stage) {
++		rstg = global.replay.output.stage;
++		saved_points = rstg->plr_points_final;
++		replay_stage_event(rstg, global.frames, EV_OVER, 0);
++		rstg->plr_points_final = global.plr.points;
++		provisional = true;
++	}
++
++	bool ok = replay_write(&sim->replay, out, REPLAY_STRUCT_VERSION_WRITE);
++	SDL_CloseIO(out);
++
++	if(provisional) {
++		rstg->events.num_elements--;
++		rstg->plr_points_final = saved_points;
++	}
++
++	if(!ok) {
++		return sim_fail(sim, TAISEI_SIM_E_IO, "replay_write failed");
++	}
++
++	return TAISEI_SIM_OK;
++}
+diff --git a/src/sim/taisei_sim.h b/src/sim/taisei_sim.h
+new file mode 100644
+index 00000000..10e5e38d
+--- /dev/null
++++ b/src/sim/taisei_sim.h
+@@ -0,0 +1,256 @@
++/*
++ * This software is licensed under the terms of the MIT License.
++ * See COPYING for further information.
++ * ---
++ * libtaisei_sim — headless, externally stepped Taisei simulation.
++ *
++ * Reconstruction of the taisei-sim ABI v1 consumed by touhou_Taisei_rl
++ * (my_test/native_rl/taisei_ffi.py). Struct layouts mirror that binding field-for-field;
++ * every taisei_sim_sizeof_*() is checked by the binding before any gameplay call.
++ *
++ * All gameplay dynamics come from the unmodified upstream game logic; this library only
++ * drives the stage loop one logic frame at a time and reads entity state back.
++ *
++ * Restrictions: one simulation per process; not thread-safe; call everything from the
++ * thread that called taisei_sim_global_init().
++ */
++
++#pragma once
++
++#include <stddef.h>
++#include <stdint.h>
++
++#ifdef TAISEI_SIM_BUILDING
++	#define TAISEI_SIM_API __attribute__((visibility("default")))
++#else
++	#define TAISEI_SIM_API
++#endif
++
++#define TAISEI_SIM_API_VERSION 1
++
++#define TAISEI_SIM_DEFAULT_I32 (-2147483647)
++#define TAISEI_SIM_DEFAULT_U64 UINT64_C(0xFFFFFFFFFFFFFFFF)
++
++enum {
++	TAISEI_SIM_BUTTON_UP      = 1,
++	TAISEI_SIM_BUTTON_DOWN    = 2,
++	TAISEI_SIM_BUTTON_LEFT    = 4,
++	TAISEI_SIM_BUTTON_RIGHT   = 8,
++	TAISEI_SIM_BUTTON_FOCUS   = 16,
++	TAISEI_SIM_BUTTON_SHOT    = 32,
++	TAISEI_SIM_BUTTON_BOMB    = 64,
++	TAISEI_SIM_BUTTON_SPECIAL = 128,
++};
++
++typedef enum TaiseiSimStatus {
++	TAISEI_SIM_STATUS_NONE    = 0,
++	TAISEI_SIM_STATUS_RUNNING = 1,
++	TAISEI_SIM_STATUS_WON     = 2,
++	TAISEI_SIM_STATUS_LOST    = 3,
++	TAISEI_SIM_STATUS_ABORTED = 4,
++	TAISEI_SIM_STATUS_ERROR   = 5,
++} TaiseiSimStatus;
++
++typedef enum TaiseiSimResult {
++	TAISEI_SIM_OK                   = 0,
++	TAISEI_SIM_E_INVALID_ARGUMENT   = -1,
++	TAISEI_SIM_E_BAD_STRUCT_SIZE    = -2,
++	TAISEI_SIM_E_API_VERSION        = -3,
++	TAISEI_SIM_E_NOT_INITIALIZED    = -4,
++	TAISEI_SIM_E_ALREADY_INITIALIZED= -5,
++	TAISEI_SIM_E_BUSY               = -6,  // a simulation already exists in this process
++	TAISEI_SIM_E_NO_EPISODE         = -7,
++	TAISEI_SIM_E_EPISODE_OVER       = -8,
++	TAISEI_SIM_E_UNKNOWN_STAGE      = -9,
++	TAISEI_SIM_E_IO                 = -10,
++	TAISEI_SIM_E_BUFFER_TOO_SMALL   = -11, // counts are still filled in
++	TAISEI_SIM_E_INTERNAL           = -12,
++} TaiseiSimResult;
++
++// Projectile categories (== upstream ProjType)
++enum {
++	TAISEI_SIM_PROJECTILE_ENEMY  = 1,
++	TAISEI_SIM_PROJECTILE_DEAD   = 2,
++	TAISEI_SIM_PROJECTILE_PLAYER = 4,
++};
++
++typedef struct TaiseiSimVec2 { double x, y; } TaiseiSimVec2;
++
++typedef struct TaiseiSimGlobalConfig {
++	uint32_t struct_size;
++	uint32_t api_version;
++	const char *resource_path;   // NULL: $TAISEI_RES_PATH or the platform default
++	const char *storage_path;    // NULL: fresh private temporary directory (deterministic defaults)
++	const char *cache_path;      // NULL: <storage>/cache
++	uint32_t flags;
++	uint32_t reserved;
++} TaiseiSimGlobalConfig;
++
++typedef struct TaiseiSimConfig {
++	uint32_t struct_size;
++	uint32_t flags;
++	double laser_sample_step;    // <= 0: export the quantized collision segments as-is
++	uint32_t reserved;
++} TaiseiSimConfig;
++
++typedef struct TaiseiSimEpisodeConfig {
++	uint32_t struct_size;
++	uint16_t stage_id;
++	uint8_t difficulty;          // 1=Easy 2=Normal 3=Hard 4=Lunatic (0: stage default)
++	uint8_t player_character;    // 0=Reimu 1=Marisa 2=Youmu
++	uint8_t shot_mode;           // 0=A 1=B
++	uint8_t practice_mode;
++	uint16_t reserved0;
++	uint64_t rng_seed;
++	uint64_t start_time;         // DEFAULT_U64: 0
++	int32_t initial_lives;       // DEFAULT_I32: keep game default
++	int32_t initial_bombs;
++	int32_t initial_life_fragments;
++	int32_t initial_bomb_fragments;
++	int32_t initial_power;
++	int32_t initial_point_item_value;
++	uint64_t initial_score;      // 0 or DEFAULT_U64: keep
++	uint32_t initial_graze;      // 0: keep
++	uint32_t reserved1;
++} TaiseiSimEpisodeConfig;
++
++typedef struct TaiseiSimAction {
++	uint32_t struct_size;
++	uint32_t buttons;
++} TaiseiSimAction;
++
++typedef struct TaiseiSimPlayerState {
++	TaiseiSimVec2 position, previous_position, velocity;
++	uint32_t input_flags, focused, shooting;
++	int32_t lives, bombs, life_fragments, bomb_fragments, stored_power, effective_power;
++	uint32_t point_item_value;
++	uint64_t score;
++	uint32_t graze, voltage;
++	uint32_t invulnerable, recovering, alive;
++	int32_t death_timer, respawn_timer, recovery_timer;
++	uint32_t bomb_active;
++	double bomb_progress;
++	int32_t bomb_trigger_frame, bomb_end_frame;
++	uint32_t power_surge_active;
++	float power_surge_positive, power_surge_negative;
++	uint8_t player_character, shot_mode;
++	uint16_t reserved;
++} TaiseiSimPlayerState;
++
++typedef struct TaiseiSimBossState {
++	uint32_t active;
++	TaiseiSimVec2 position, velocity;
++	float hp, max_hp;
++	uint32_t invulnerable;
++	int32_t phase_index;
++	uint32_t phase_type;          // AttackType + 1 (0: no current attack)
++	uint16_t attack_id, spell_id;
++	uint32_t spell_active;
++	int32_t phase_start_frame, phase_end_frame, phase_timeout_frames, remaining_timeout_frames;
++	int32_t spell_failed_frame;
++	uint32_t spell_failed, spell_captured;
++	float recent_damage;
++} TaiseiSimBossState;
++
++typedef struct TaiseiSimProjectileState {
++	uint32_t spawn_id, category;
++	TaiseiSimVec2 position, previous_position, velocity, collision_size;
++	float damage, angle;
++	int32_t age_frames;
++	uint32_t flags, damage_type, clear_flags;
++} TaiseiSimProjectileState;
++
++typedef struct TaiseiSimEnemyState {
++	uint32_t spawn_id;
++	TaiseiSimVec2 position, velocity;
++	float hp, max_hp, hit_radius, hurt_radius;
++	int32_t age_frames;
++	uint32_t flags, damageable, harmful;
++} TaiseiSimEnemyState;
++
++typedef struct TaiseiSimItemState {
++	uint32_t spawn_id;
++	TaiseiSimVec2 position, velocity;
++	uint32_t item_type;
++	int32_t age_frames, collect_frame;
++	uint32_t attracted;
++	float pickup_value;
++} TaiseiSimItemState;
++
++typedef struct TaiseiSimLaserState {
++	uint32_t spawn_id;
++	TaiseiSimVec2 origin;
++	int32_t age_frames;
++	float width, speed, timespan, death_time, time_shift;
++	uint32_t collision_active, unclearable, clear_flags;
++	uint32_t first_point, point_count;
++} TaiseiSimLaserState;
++
++enum {
++	TAISEI_SIM_LASER_POINT_SEGMENT_START = 1,
++	TAISEI_SIM_LASER_POINT_SEGMENT_END   = 2,
++	TAISEI_SIM_LASER_POINT_DISCONTINUITY = 4,
++};
++
++typedef struct TaiseiSimLaserPoint {
++	TaiseiSimVec2 position;
++	float half_width;            // visual half width (collision radius is max(half_width - 4, 2))
++	float time;
++	uint32_t flags;
++} TaiseiSimLaserPoint;
++
++typedef struct TaiseiSimState {
++	uint32_t struct_size, api_version;
++	uint16_t stage_id, stage_type;
++	uint8_t difficulty, player_character, shot_mode, practice_mode;
++	uint64_t logical_frame, initial_rng_seed, start_time;
++	uint32_t episode_status, stage_clear, game_over, reserved0;
++	uint64_t score;
++	uint32_t graze, voltage, deaths, bombs_used, continues_used;
++	int32_t gameover_frame, reserved2;
++	TaiseiSimPlayerState player;
++	TaiseiSimBossState boss;
++	uint32_t projectile_count, enemy_count, item_count, laser_count, laser_point_count, reserved1;
++	uint64_t gameplay_digest;
++} TaiseiSimState;
++
++typedef struct TaiseiSimStateBuffers {
++	uint32_t struct_size, reserved;
++	TaiseiSimProjectileState *projectiles; uint32_t projectile_capacity;
++	TaiseiSimEnemyState *enemies;          uint32_t enemy_capacity;
++	TaiseiSimItemState *items;             uint32_t item_capacity;
++	TaiseiSimLaserState *lasers;           uint32_t laser_capacity;
++	TaiseiSimLaserPoint *laser_points;     uint32_t laser_point_capacity;
++} TaiseiSimStateBuffers;
++
++typedef struct TaiseiSim TaiseiSim;
++
++TAISEI_SIM_API uint32_t taisei_sim_api_version(void);
++
++TAISEI_SIM_API size_t taisei_sim_sizeof_vec2(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_global_config(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_config(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_episode_config(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_action(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_state_buffers(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_player_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_boss_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_projectile_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_enemy_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_item_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_laser_state(void);
++TAISEI_SIM_API size_t taisei_sim_sizeof_laser_point(void);
++
++TAISEI_SIM_API int32_t taisei_sim_global_init(const TaiseiSimGlobalConfig *config);
++TAISEI_SIM_API int32_t taisei_sim_global_shutdown(void);
++
++TAISEI_SIM_API int32_t taisei_sim_create(const TaiseiSimConfig *config, TaiseiSim **out_sim);
++TAISEI_SIM_API int32_t taisei_sim_destroy(TaiseiSim *sim);
++
++TAISEI_SIM_API int32_t taisei_sim_reset(TaiseiSim *sim, const TaiseiSimEpisodeConfig *episode);
++TAISEI_SIM_API int32_t taisei_sim_step(TaiseiSim *sim, const TaiseiSimAction *action, uint32_t frames);
++TAISEI_SIM_API int32_t taisei_sim_get_state(TaiseiSim *sim, TaiseiSimState *state, TaiseiSimStateBuffers *buffers);
++TAISEI_SIM_API int32_t taisei_sim_save_replay(TaiseiSim *sim, const char *path);
++
++TAISEI_SIM_API const char *taisei_sim_last_error(TaiseiSim *sim);
+diff --git a/src/sim_hooks.c b/src/sim_hooks.c
+new file mode 100644
+index 00000000..454f4648
+--- /dev/null
++++ b/src/sim_hooks.c
+@@ -0,0 +1,8 @@
++/*
++ * This software is licensed under the terms of the MIT License.
++ * See COPYING for further information.
++ */
++
++#include "sim_hooks.h"
++
++TaiseiSimHooks taisei_sim_hooks;
+diff --git a/src/sim_hooks.h b/src/sim_hooks.h
+new file mode 100644
+index 00000000..b41717ab
+--- /dev/null
++++ b/src/sim_hooks.h
+@@ -0,0 +1,53 @@
++/*
++ * This software is licensed under the terms of the MIT License.
++ * See COPYING for further information.
++ * ---
++ * taisei-sim reconstruction: minimal hooks that let an embedding (libtaisei_sim)
++ * drive the unmodified game logic headlessly.
++ *
++ * When `taisei_sim_hooks.active` is false (the default, and always the case for the
++ * regular game executable), every hook is a no-op and the game behaves exactly as upstream.
++ */
++
++#pragma once
++#include "taisei.h"
++
++#include "config.h"
++
++typedef struct TaiseiSimKeyEdge {
++	int32_t key;   // KeyIndex
++	bool down;
++} TaiseiSimKeyEdge;
++
++typedef struct TaiseiSimHooks {
++	bool active;
++
++	// Deterministic episode seeding (applied in _stage_enter instead of makeseed()/time()).
++	bool override_seed;
++	uint64_t seed;
++	bool override_start_time;
++	uint64_t start_time;
++
++	// Virtual keyboard. `key_held` replaces the SDL keyboard state in gamekeypressed();
++	// `key_edges` yields press/release edges which are routed through the regular
++	// gameplay input handler, exactly as real key events would be.
++	bool (*key_held)(KeyIndex key);
++	int (*key_edges)(int max, TaiseiSimKeyEdge edges[]);
++
++	// Called at the end of stage_start(), before the replay stage is created, so that
++	// initial-state overrides are recorded into the replay.
++	void (*on_stage_start)(void);
++
++	// Dialogue lines complete immediately (as if skipped on the frame they appear).
++	// Matches the original taisei-sim: stage scripts proceed without dialogue delays.
++	// Unlike the other hooks this one is honoured even when `active` is false, so that the
++	// regular executable can play back / verify replays recorded by libtaisei_sim
++	// (set TAISEI_SIM_SKIP_DIALOG_WAITS=1).
++	bool skip_dialog_waits;
++
++	// Called instead of opening the game-over menu. The hook decides the outcome;
++	// if NULL, the stage ends with GAMEOVER_DEFEAT.
++	void (*on_gameover)(void);
++} TaiseiSimHooks;
++
++extern TaiseiSimHooks taisei_sim_hooks;
+diff --git a/src/stage.c b/src/stage.c
+index 30d14736..30471728 100644
+--- a/src/stage.c
++++ b/src/stage.c
+@@ -22,6 +22,7 @@
+ #include "menu/gameovermenu.h"
+ #include "menu/ingamemenu.h"
+ #include "player.h"
++#include "sim_hooks.h"
+ #include "replay/demoplayer.h"
+ #include "replay/stage.h"
+ #include "replay/state.h"
+@@ -186,6 +187,10 @@ static void stage_start(StageInfo *stage) {
+ 
+ 	global.plr.power_stored = clamp(global.plr.power_stored, 0, PLR_MAX_POWER_STORED);
+ 
++	if(taisei_sim_hooks.active && taisei_sim_hooks.on_stage_start) {
++		taisei_sim_hooks.on_stage_start();
++	}
++
+ 	reset_all_sfx();
+ }
+ 
+@@ -340,6 +345,15 @@ static void gameover_menu_result(CallChainResult ccr) {
+ }
+ 
+ void stage_gameover(void) {
++	if(taisei_sim_hooks.active) {
++		if(taisei_sim_hooks.on_gameover) {
++			taisei_sim_hooks.on_gameover();
++		} else {
++			global.gameover = GAMEOVER_DEFEAT;
++		}
++		return;
++	}
++
+ 	if(global.stage->type == STAGE_SPELL && config_get_int(CONFIG_SPELLSTAGE_AUTORESTART)) {
+ 		auto fstate = _current_stage_state;
+ 		if(fstate->quicksave) {
+@@ -673,6 +687,19 @@ static void stage_input(StageFrameState *fstate) {
+ 		}, EFLAG_GAME);
+ 	}
+ 
++	if(taisei_sim_hooks.active && taisei_sim_hooks.key_edges && !stage_is_skip_mode()) {
++		TaiseiSimKeyEdge edges[32];
++		int nedges = taisei_sim_hooks.key_edges(ARRAY_SIZE(edges), edges);
++
++		for(int i = 0; i < nedges; ++i) {
++			SDL_Event e = {};
++			e.type = MAKE_TAISEI_EVENT(edges[i].down ? TE_GAME_KEY_DOWN : TE_GAME_KEY_UP);
++			e.user.code = edges[i].key;
++			e.user.data1 = (void*)(intptr_t)INDEV_KEYBOARD;
++			stage_input_handler_gameplay(&e, fstate);
++		}
++	}
++
+ 	player_fix_input(&global.plr, &global.replay.output);
+ 	player_applymovement(&global.plr);
+ }
+@@ -1226,6 +1253,16 @@ static void _stage_enter(
+ 		start_time = (uint64_t)time(0);
+ 		seed = makeseed();
+ 
++		if(taisei_sim_hooks.active) {
++			if(taisei_sim_hooks.override_start_time) {
++				start_time = taisei_sim_hooks.start_time;
++			}
++
++			if(taisei_sim_hooks.override_seed) {
++				seed = taisei_sim_hooks.seed;
++			}
++		}
++
+ 		StageProgress *p = NOT_NULL(stageinfo_get_progress(stage, global.diff, true));
+ 		progress_register_stage_played(p, global.plr.mode);
+ 	}
+-- 
+2.43.0
+

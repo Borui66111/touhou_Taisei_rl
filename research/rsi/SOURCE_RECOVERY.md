@@ -33,3 +33,18 @@ If the source is later placed in `my_test/upstream/taisei-sim-pinned`, re-run ve
 - **Interpretation:** A safe recovery route is available for inspection; actual source access and native gameplay remain blocked.
 - **Decision:** Do not run native E5 or train a candidate until the exact checkout and submodules are verified. No champion promotion, sealed seeds, new branches, or paid infrastructure.
 - **Next:** Obtain an authorized saved checkout; run this checker; then execute one serialized E5 checkpoint replay (development seeds 42132–42133, <=12,000 evaluation decisions per policy, <=60 minutes) and inspect full action/state traces.
+
+## 2026-11-27: Reconstruction from public Taisei (user decision)
+
+Remote access to `789200ff` is exhausted (T-20261126-62). On the user's instruction the simulator
+was **rebuilt from public Taisei** instead of waiting: `my_test/sim_rebuild/` (lock, patch, build
+script, README). The rebuilt `libtaisei_sim.so` implements the same ABI v1 and reproduces the
+original's archived behaviour exactly: 12,000/12,000 E3 teacher observations bit-identical,
+16/16 E4 teacher episodes identical on every non-digest metric, E2 aggregates identical, smoke and
+determinism logs identical (`research/rsi/evidence/rebuilt_sim_validation_20261127.json`).
+
+This is **behavioural equivalence on the archived evidence, not source identity**. `UPSTREAM.lock`
+and `build_taisei_sim.sh` are unchanged and still describe the original. The verified-checkout
+path above remains valid if the original ever reappears. Results from the rebuild must name it as
+the simulator: `taisei-project/taisei@5668c41b` plus the patch sha256 in
+`my_test/sim_rebuild/UPSTREAM_PUBLIC.lock`.
